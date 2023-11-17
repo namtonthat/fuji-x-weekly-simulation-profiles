@@ -3,13 +3,18 @@ import os
 import re
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 import requests
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
-from lxml import etree
 from models import DynamicRange, FilmSimulation, FujiEffect, FujiSensor, GrainEffectSize, WhiteBalanceSetting
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+# Example usage
+logger = logging.getLogger(__name__)
 
 
 def convert_to_float(value_str):
@@ -69,39 +74,23 @@ def replace_xml_value(template, attribute_name, attribute_value):
     if re.search(pattern, template):
         return re.sub(pattern, f"<{attribute_name}>{attribute_value}</{attribute_name}>", template)
     else:
-        logging.warning(f"Error: No XML tag found for attribute '{attribute_name}'")
+        logger.warning(f"Error: No XML tag found for attribute '{attribute_name}'")
         return template
 
 
-class XMLRepresentable:
-    def snake_to_camel(self, name):
-        components = name.split("_")
-        return "".join(x.title() for x in components)
-
-    def as_xml(self):
-        """Convert the dataclass attributes to XML string with camelCase attribute names."""
-        elements = []
-        for field in fields(self):
-            value = getattr(self, field.name)
-            # Ensure the value has a .value attribute (common in Enums)
-            if hasattr(value, "value"):
-                value = value.value
-
-            camel_case_name = self.snake_to_camel(field.name)
-            element = etree.Element(camel_case_name)
-            element.text = str(value)
-            elements.append(element)
-        return "".join(etree.tostring(e, pretty_print=True, encoding="unicode") for e in elements)
+def snake_to_camel(name) -> str:
+    components = name.split("_")
+    return "".join(x.title() for x in components)
 
 
 @dataclass
-class GrainEffect(XMLRepresentable):
+class GrainEffect:
     grain_effect: FujiEffect
     grain_effect_size: GrainEffectSize
 
 
 @dataclass
-class WhiteBalance(XMLRepresentable):
+class WhiteBalance:
     setting: WhiteBalanceSetting
     red: int
     blue: int
@@ -111,19 +100,19 @@ class WhiteBalance(XMLRepresentable):
 @dataclass
 class FujiSimulationProfile:
     film_simulation: str
-    grain_effect: GrainEffect
-    color_chrome_effect: FujiEffect
-    color_chrome_fx_blue: FujiEffect
     white_balance: WhiteBalance
     dynamic_range: DynamicRange
-    highlight: int
-    shadow: int
     color: int
     sharpness: int
     high_iso_nr: int
-    clarity: int
     iso: str
     exposure_compensation: float
+    clarity: Optional[int] = 0
+    color_chrome_effect: Optional[FujiEffect] = None
+    color_chrome_fx_blue: Optional[FujiEffect] = None
+    grain_effect: Optional[GrainEffect] = None
+    highlight: Optional[int] = 0
+    shadow: Optional[int] = 0
 
     # Mapping between FujiSimulationProfile attributes and XML tags
     attribute_to_xml_mapping: ClassVar[dict] = {
@@ -189,9 +178,29 @@ class FujiSimulationProfileParser:
 
         profile_dict = {}
         for tag in processed_tags:
-            key, value = tag.split(": ", 1)
+            try:
+                key, value = tag.split(": ", 1)
+            except ValueError:
+                # Sometimes the tag is just the film simulation name
+                # e.g. "Classic Chrome"
+                standardised_tag = tag.replace(" ", "_").split("/")[0].upper()
+                if standardised_tag in FilmSimulation.__members__:
+                    key = "film_simulation"
+                    value = standardised_tag
+
             key = key.lower().replace(" ", "_").replace("&", "and")
             value = value.lower()
+
+            # Special handling for some keys
+            special_keys = {
+                "color_chrome_effect_blue": "color_chrome_fx_blue",
+                "noise_reduction": "high_iso_nr",
+                "sharpening": "sharpness",
+            }
+
+            if key in special_keys:
+                key = special_keys[key]
+
             profile_dict[key] = self.parse_and_convert(key, value)
 
         return FujiSimulationProfile(**profile_dict)
@@ -199,64 +208,100 @@ class FujiSimulationProfileParser:
     @staticmethod
     def parse_and_convert(key, value):
         def clean_string(text_string):
-            return text_string.replace(" ", "_").replace(",", "").upper()
+            return text_string.replace(" ", "_").replace(",", "").replace("-", "").upper()
 
         # Custom conversion logic based on the key
         standardised_value = clean_string(value)
-        # For enum fields, map them appropriately
-        if key in ["color_chrome_effect", "color_chrome_fx_blue"]:
-            converted_value = FujiEffect[standardised_value].value
-        elif key == "dynamic_range":
-            converted_value = DynamicRange[standardised_value].value
-        elif key == "exposure_compensation":
-            exposure_regex = r"[+-]?\d+(?:/\d+)?"
-            matches = re.findall(exposure_regex, standardised_value)
-            converted_value = convert_to_float(matches[0])
-        elif key == "film_simulation":
-            converted_value = FilmSimulation[standardised_value].value
-        elif key == "white_balance":
-            # Defaults
-            temp_match = None
 
-            # Extract the temperature or setting
-            if "K" in standardised_value:
-                temp_match = re.search(r"(\d+)K", standardised_value)
-                color_temp = int(temp_match.group(1)) if temp_match else None
-                setting = WhiteBalanceSetting.TEMPERATURE
-            else:
-                setting_match = re.match(r"([^_]+)", standardised_value)
-                setting_name = setting_match.group(1).upper() if setting_match else "AUTO"
-                setting = WhiteBalanceSetting[setting_name]
+        parsing_methods = {
+            "color_chrome_effect": FujiSimulationProfileParser.parse_color_chrome_effect,
+            "dynamic_range": FujiSimulationProfileParser.parse_dynamic_range,
+            "exposure_compensation": FujiSimulationProfileParser.parse_exposure_compensation,
+            "highlight": FujiSimulationProfileParser.parse_numerical_values,
+            "shadow": FujiSimulationProfileParser.parse_numerical_values,
+            "color": FujiSimulationProfileParser.parse_numerical_values,
+            "sharpness": FujiSimulationProfileParser.parse_numerical_values,
+            "high_iso_nr": FujiSimulationProfileParser.parse_numerical_values,
+            "clarity": FujiSimulationProfileParser.parse_numerical_values,
+        }
 
-            # Extract red and blue adjustments
-            red_regex = r"([+-]?\d+)_RED"
-            blue_regex = r"([+-]?\d+)_BLUE"
-            red_match = re.search(red_regex, standardised_value)
-            red = int(red_match.group(1)) if red_match else 0
-
-            blue_match = re.search(blue_regex, standardised_value)
-            blue = int(blue_match.group(1)) if blue_match else 0
-
-            return WhiteBalance(
-                setting=setting, red=red, blue=blue, color_temp=f"{color_temp}K" if temp_match else "0K"
-            )
-
-        elif key == "grain_effect":
-            grain_effect_values = [item.strip() for item in standardised_value.split("_")]
-
-            # Values
-            grain_effect = grain_effect_values[0]
-            grain_effect_size = grain_effect_values[1]
-
-            # Convert to enum
-            converted_value = GrainEffect(
-                grain_effect=FujiEffect[grain_effect].value, grain_effect_size=GrainEffectSize[grain_effect_size].value
-            )
-
-        elif key in ["highlight", "shadow", "color", "sharpness", "high_iso_nr", "clarity"]:
-            converted_value = int(value)
+        if key in parsing_methods:
+            return parsing_methods[key](standardised_value)
         else:
-            converted_value = standardised_value
+            return standardised_value
+
+    @staticmethod
+    def parse_color_chrome_effect(value):
+        return FujiEffect[value].value
+
+    @staticmethod
+    def parse_dynamic_range(value):
+        dynamic_range_map = {
+            "DRANGE_PRIORITY_(DRP)_AUTO": "DRAUTO",
+        }
+        if value in dynamic_range_map:
+            value = dynamic_range_map[value]
+
+        return DynamicRange[value].value
+
+    @staticmethod
+    def parse_exposure_compensation(value):
+        exposure_regex = r"[+-]?\d+(?:/\d+)?"
+        matches = re.findall(exposure_regex, value)
+        return convert_to_float(matches[0])
+
+    @staticmethod
+    def parse_film_simluation(value):
+        return FilmSimulation[value].value
+
+    @staticmethod
+    def parse_grain_effect(value):
+        grain_effect_values = [item.strip() for item in value.split("_")]
+
+        # Values
+        grain_effect = grain_effect_values[0]
+        grain_effect_size = grain_effect_values[1]
+
+        return GrainEffect(
+            grain_effect=FujiEffect[grain_effect].value, grain_effect_size=GrainEffectSize[grain_effect_size].value
+        )
+
+    @staticmethod
+    def parse_white_balance(value):
+        # Defaults
+        temp_match = None
+
+        # Extract the temperature or setting
+        if "K" in value:
+            temp_match = re.search(r"(\d+)K", value)
+            color_temp = int(temp_match.group(1)) if temp_match else None
+            setting = WhiteBalanceSetting.TEMPERATURE
+        else:
+            setting_match = re.match(r"([^_]+)", value)
+            setting_name = setting_match.group(1).upper() if setting_match else "AUTO"
+            setting = WhiteBalanceSetting[setting_name]
+
+        # Extract red and blue adjustments
+        red_regex = r"([+-]?\d+)_RED"
+        blue_regex = r"([+-]?\d+)_BLUE"
+        red_match = re.search(red_regex, value)
+        red = int(red_match.group(1)) if red_match else 0
+
+        blue_match = re.search(blue_regex, value)
+        blue = int(blue_match.group(1)) if blue_match else 0
+
+        return WhiteBalance(setting=setting, red=red, blue=blue, color_temp=f"{color_temp}K" if temp_match else "0K")
+
+    @staticmethod
+    def parse_numerical_values(value):
+        int_regex = r"([+-]?\d+)"
+        match = re.search(int_regex, value)
+        if match:
+            converted_value = int(match.group(0))
+        else:
+            logger.warning("Could not convert %s to int, setting to 0", value)
+            converted_value = 0
+
         return converted_value
 
 
@@ -265,6 +310,7 @@ class FujiXWeeklyUrlParser:
     url: str
 
     def parse_webpage_for_strong_tags(self) -> list:
+        logger.info("Parsing URL: %s", self.url)
         page = requests.get(self.url, timeout=TIMEOUT_SECONDS)
         soup = BeautifulSoup(page.content, "html.parser")
         strong_tags = soup.find_all("strong")
@@ -289,13 +335,13 @@ class FujiRecipe:
     film_simulation_name: str
 
     # Defaults
-    template_location = "fuji_template.jinja2"
+    template_location = "templates/fp1.jinja2"
 
     @property
     def output_file_path(self) -> str:
-        return f"../fuji_profiles/{self.sensor.value}/{self.film_simulation_name}.fp1"
+        return f"fuji_profiles/{self.sensor.value}/{self.film_simulation_name}.fp1"
 
-    def fuji_profile_as_dict(self) -> dict:
+    def as_flat_dict(self) -> dict:
         fuji_profile = FujiXWeeklyUrlParser(url=self.recipe_url).get_profile()
         return fuji_profile.to_flat_dict()
 
@@ -303,7 +349,7 @@ class FujiRecipe:
         template_dir = os.getcwd()
         file_loader = FileSystemLoader(template_dir)
         env = Environment(loader=file_loader, autoescape=True)
-        template = env.get_template("fuji_template.jinja2")
+        template = env.get_template(self.template_location)
 
         return template
 
@@ -314,13 +360,14 @@ class FujiRecipe:
         )
 
         initial_filled_template = template.render(template_data.__dict__)
-        filled_xml = fill_xml_template(self.fuji_profile_as_dict(), initial_filled_template)
+        filled_xml = fill_xml_template(self.as_flat_dict(), initial_filled_template)
         return filled_xml
 
     def save(self):
         output = self.set_xml()
         directory_path = os.path.dirname(self.output_file_path)
         os.makedirs(directory_path, exist_ok=True)
+        logger.info("Saving profile to %s", self.output_file_path)
 
         with open(self.output_file_path, "w") as f:
             f.write(output)
@@ -345,7 +392,7 @@ class FujiRecipes:
             except KeyError:
                 continue
 
-            recipe_regex = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*/$"
+            recipe_regex = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*recipe/$"
 
             if re.match(recipe_regex, recipe_link):
                 sensor_recipe = FujiRecipe(sensor=sensor, recipe_url=recipe_link, film_simulation_name=link.text)
@@ -371,5 +418,8 @@ TIMEOUT_SECONDS = 10
 if __name__ == "__main__":
     sensor_recipes = {}
     for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
+        logger.info("Pulling recipes for sensor %s", sensor)
         related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
-        sensor_recipes[sensor] = FujiRecipes(sensor=sensor, base_sensor_url=sensor_url, related_recipes=related_recipes)
+
+        for recipe in related_recipes:
+            recipe.save()

@@ -9,6 +9,7 @@ class FujiEffect(Enum):
 
 
 class DynamicRange(Enum):
+    DRAUTO = "AUTO"
     DR400 = 400
     DR200 = 200
     DR100 = 100
