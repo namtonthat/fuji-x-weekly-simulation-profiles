@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
@@ -6,6 +7,7 @@ from typing import ClassVar
 
 import requests
 from bs4 import BeautifulSoup
+from jinja2 import Environment, FileSystemLoader
 from lxml import etree
 from models import DynamicRange, FilmSimulation, FujiEffect, FujiSensor, GrainEffectSize, WhiteBalanceSetting
 
@@ -26,6 +28,49 @@ def convert_to_float(value_str):
         return round(numerator / denominator, 2)
     else:
         return round(float(value_str), 2)
+
+
+def fill_xml_template(profile_dict, template):
+    """
+    Fills an XML template with values from a profile dictionary.
+
+    Args:
+    profile_dict (dict): Dictionary containing profile attributes and values.
+    template (str): XML template string to be filled with values.
+
+    Returns:
+    str: XML template filled with profile values.
+    """
+    for attribute_name, attr_value in profile_dict.items():
+        xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(attribute_name, None)
+
+        if xml_tag:
+            template = replace_xml_value(template, xml_tag, attr_value)
+        else:
+            print(f"Error: No XML tag mapping found for attribute '{attribute_name}'")
+
+    return template
+
+
+def replace_xml_value(template, attribute_name, attribute_value):
+    """
+    Replaces the value of a specific XML tag in a template.
+
+    Args:
+    template (str): XML template string.
+    attribute_name (str): The name of the XML tag to replace.
+    attribute_value (str): The new value to insert into the tag.
+
+    Returns:
+    str: Updated XML template with the new value for the specified tag.
+    """
+    pattern = r"<" + re.escape(attribute_name) + r">(.*?)</" + re.escape(attribute_name) + r">"
+
+    if re.search(pattern, template):
+        return re.sub(pattern, f"<{attribute_name}>{attribute_value}</{attribute_name}>", template)
+    else:
+        logging.warning(f"Error: No XML tag found for attribute '{attribute_name}'")
+        return template
 
 
 class XMLRepresentable:
@@ -165,15 +210,12 @@ class FujiSimulationProfileParser:
             converted_value = DynamicRange[standardised_value].value
         elif key == "exposure_compensation":
             exposure_regex = r"[+-]?\d+(?:/\d+)?"
-
             matches = re.findall(exposure_regex, standardised_value)
-
             converted_value = convert_to_float(matches[0])
-
         elif key == "film_simulation":
             converted_value = FilmSimulation[standardised_value].value
         elif key == "white_balance":
-            # defaults
+            # Defaults
             temp_match = None
 
             # Extract the temperature or setting
@@ -224,8 +266,11 @@ class FujiXWeeklyUrlParser:
     simluation_name: str
     sensor_type: FujiSensor
 
+    # Defaults
+    timeout_seconds: int = 10
+
     def parse_webpage_for_strong_tags(self) -> list:
-        page = requests.get(self.url, timeout=TIMEOUT_SECONDS)
+        page = requests.get(self.url, timeout=self.timeout_seconds)
         soup = BeautifulSoup(page.content, "html.parser")
         strong_tags = soup.find_all("strong")
         return strong_tags
@@ -236,47 +281,71 @@ class FujiXWeeklyUrlParser:
         return fuji_profile
 
 
-def fill_xml_template(profile_dict, template):
-    for attribute_name, attr_value in profile_dict.items():
-        xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(attribute_name, None)
-
-        if xml_tag:
-            template = replace_xml_value(template, xml_tag, attr_value)
-        else:
-            print(f"Error: No XML tag mapping found for attribute '{attribute_name}'")
-
-    return print(template)
+@dataclass
+class FujiTemplateData:
+    github_link: str
+    fuji_x_weekly_url: str
+    film_simulation_name: str
 
 
-# Function to replace XML value
-def replace_xml_value(template, attribute_name, attribute_value):
-    # Regex pattern to find the corresponding XML tag
-    pattern = r"<" + re.escape(attribute_name) + r">(.*?)</" + re.escape(attribute_name) + r">"
+@dataclass
+class FujiProfile:
+    url: str
+    simulation_name: str
+    sensor_type: FujiSensor
 
-    # Check if the pattern is found in the template
-    if re.search(pattern, template):
-        # Replace the found tag with the attribute value
-        return re.sub(pattern, f"<{attribute_name}>{attribute_value}</{attribute_name}>", template)
-    else:
-        # Log an error if the tag is not found
-        logging.warning(f"Error: No XML tag found for attribute '{attribute_name}'")
+    # Defaults
+    template_location = "fuji_template.jinja2"
+    github_link = "https://github.com/namtonthat/fuji-x-weekly-simulation-profiles"
+
+    @property
+    def output_file_path(self) -> str:
+        return f"../fuji_profiles/{self.sensor_type.value}/{self.simulation_name}.fp1"
+
+    def fuji_profile_as_dict(self) -> dict:
+        # Your logic to create the Fuji profile
+        fuji_profile = FujiXWeeklyUrlParser(
+            url=self.url, simluation_name=self.simulation_name, sensor_type=self.sensor_type
+        ).create_fuji_profile()
+
+        return fuji_profile.to_flat_dict()
+
+    def render_template(self):
+        template_dir = os.getcwd()
+        file_loader = FileSystemLoader(template_dir)
+        env = Environment(loader=file_loader, autoescape=True)
+        template = env.get_template("fuji_template.jinja2")
+
         return template
 
+    def set_xml(self):
+        template = self.render_template()
+        template_data = FujiTemplateData(
+            github_link=self.github_link, fuji_x_weekly_url=self.url, film_simulation_name=self.simulation_name
+        )
 
-# Global
-URL_LINK_HEADER = "Nostalgia Negative"
-FUJI_WEEKLY_URL = (
-    "https://fujixweekly.com/2022/11/22/nostalgia-negative-my-first-fujifilm-x-t5-x-trans-v-film-simulation-recipe/"
-)
-TIMEOUT_SECONDS = 10
+        initial_filled_template = template.render(template_data.__dict__)
+        filled_xml = fill_xml_template(self.fuji_profile_as_dict(), initial_filled_template)
+        return filled_xml
+
+    def save(self):
+        output = self.set_xml()
+        logging.info("Template to be saved: %s", output)
+
+        # Extract the directory path from the output file path
+        directory_path = os.path.dirname(self.output_file_path)
+        os.makedirs(directory_path, exist_ok=True)
+
+        # Write (or overwrite) the file
+        with open(self.output_file_path, "w") as f:
+            f.write(output)
 
 
 if __name__ == "__main__":
-    fuji_profile = FujiXWeeklyUrlParser(
-        url=FUJI_WEEKLY_URL, simluation_name=URL_LINK_HEADER, sensor_type=FujiSensor.X_TRANS_V
-    ).create_fuji_profile()
+    fuji_profile = FujiProfile(
+        url="https://fujixweekly.com/2022/11/22/nostalgia-negative-my-first-fujifilm-x-t5-x-trans-v-film-simulation-recipe/",
+        simulation_name="Nostalgia Negative",
+        sensor_type=FujiSensor.X_TRANS_V,
+    )
 
-    with open("fuji_template.jinja2") as f:
-        fuji_template = f.read()
-
-    fill_xml_template(fuji_profile.to_flat_dict(), fuji_template)
+    fuji_profile.save()

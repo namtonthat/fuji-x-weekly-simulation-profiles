@@ -16,6 +16,6 @@ COPY poetry.lock pyproject.toml /code/
 RUN poetry install --no-interaction --no-ansi --no-root --no-dev
 
 # Copy Python code to the Docker image
-COPY fuji_x_weekly_simluation_profiles /code/fuji_x_weekly_simluation_profiles/
+COPY . /code/fuji_x_weekly_simluation_profiles/
 
-CMD [ "python", "fuji_x_weekly_simluation_profiles/foo.py"]
+CMD [ "python", "scrape/scrape.py"]

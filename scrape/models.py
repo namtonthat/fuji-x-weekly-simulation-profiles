@@ -1,3 +1,4 @@
+# A set of Enums to be used to generate the representative Fujifilm .fp1 camera settings
 from enum import Enum
 
 
