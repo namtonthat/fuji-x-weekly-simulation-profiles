@@ -263,19 +263,14 @@ class FujiSimulationProfileParser:
 @dataclass
 class FujiXWeeklyUrlParser:
     url: str
-    simluation_name: str
-    sensor_type: FujiSensor
-
-    # Defaults
-    timeout_seconds: int = 10
 
     def parse_webpage_for_strong_tags(self) -> list:
-        page = requests.get(self.url, timeout=self.timeout_seconds)
+        page = requests.get(self.url, timeout=TIMEOUT_SECONDS)
         soup = BeautifulSoup(page.content, "html.parser")
         strong_tags = soup.find_all("strong")
         return strong_tags
 
-    def create_fuji_profile(self) -> FujiSimulationProfile:
+    def get_profile(self) -> FujiSimulationProfile:
         strong_tags = self.parse_webpage_for_strong_tags()
         fuji_profile = FujiSimulationProfileParser(strong_tags).parse()
         return fuji_profile
@@ -283,31 +278,25 @@ class FujiXWeeklyUrlParser:
 
 @dataclass
 class FujiTemplateData:
-    github_link: str
     fuji_x_weekly_url: str
     film_simulation_name: str
 
 
 @dataclass
-class FujiProfile:
-    url: str
-    simulation_name: str
-    sensor_type: FujiSensor
+class FujiRecipe:
+    sensor: FujiSensor
+    recipe_url: str
+    film_simulation_name: str
 
     # Defaults
     template_location = "fuji_template.jinja2"
-    github_link = "https://github.com/namtonthat/fuji-x-weekly-simulation-profiles"
 
     @property
     def output_file_path(self) -> str:
-        return f"../fuji_profiles/{self.sensor_type.value}/{self.simulation_name}.fp1"
+        return f"../fuji_profiles/{self.sensor.value}/{self.film_simulation_name}.fp1"
 
     def fuji_profile_as_dict(self) -> dict:
-        # Your logic to create the Fuji profile
-        fuji_profile = FujiXWeeklyUrlParser(
-            url=self.url, simluation_name=self.simulation_name, sensor_type=self.sensor_type
-        ).create_fuji_profile()
-
+        fuji_profile = FujiXWeeklyUrlParser(url=self.recipe_url).get_profile()
         return fuji_profile.to_flat_dict()
 
     def render_template(self):
@@ -321,7 +310,7 @@ class FujiProfile:
     def set_xml(self):
         template = self.render_template()
         template_data = FujiTemplateData(
-            github_link=self.github_link, fuji_x_weekly_url=self.url, film_simulation_name=self.simulation_name
+            fuji_x_weekly_url=self.recipe_url, film_simulation_name=self.film_simulation_name
         )
 
         initial_filled_template = template.render(template_data.__dict__)
@@ -330,22 +319,57 @@ class FujiProfile:
 
     def save(self):
         output = self.set_xml()
-        logging.info("Template to be saved: %s", output)
-
-        # Extract the directory path from the output file path
         directory_path = os.path.dirname(self.output_file_path)
         os.makedirs(directory_path, exist_ok=True)
 
-        # Write (or overwrite) the file
         with open(self.output_file_path, "w") as f:
             f.write(output)
 
 
-if __name__ == "__main__":
-    fuji_profile = FujiProfile(
-        url="https://fujixweekly.com/2022/11/22/nostalgia-negative-my-first-fujifilm-x-t5-x-trans-v-film-simulation-recipe/",
-        simulation_name="Nostalgia Negative",
-        sensor_type=FujiSensor.X_TRANS_V,
-    )
+@dataclass
+class FujiRecipes:
+    sensor: FujiSensor
+    base_sensor_url: str
+    related_recipes: list[FujiRecipe]
 
-    fuji_profile.save()
+    @classmethod
+    def fetch_recipes(cls, sensor, sensor_url):
+        page = requests.get(sensor_url, timeout=TIMEOUT_SECONDS)
+        soup = BeautifulSoup(page.content, "html.parser")
+        all_links_for_sensor = soup.find_all("a")
+
+        related_recipes = []
+        for link in all_links_for_sensor:
+            try:
+                recipe_link = link["href"]
+            except KeyError:
+                continue
+
+            recipe_regex = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*/$"
+
+            if re.match(recipe_regex, recipe_link):
+                sensor_recipe = FujiRecipe(sensor=sensor, recipe_url=recipe_link, film_simulation_name=link.text)
+                related_recipes.append(sensor_recipe)
+
+        return related_recipes
+
+
+GLOBAL_SENSOR_LIST = {
+    FujiSensor.BAYER: "https://fujixweekly.com/fujifilm-bayer-recipes/",
+    FujiSensor.EXR_CMOS: "https://fujixweekly.com/fujifilm-exr-cmos-film-simulation-recipes/",
+    FujiSensor.GFX: "https://fujixweekly.com/fujifilm-gfx-recipes/",
+    FujiSensor.X_TRANS_I: "https://fujixweekly.com/fujifilm-x-trans-i-recipes/",
+    FujiSensor.X_TRANS_II: "https://fujixweekly.com/fujifilm-x-trans-ii-recipes/",
+    FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
+    FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
+    FujiSensor.X_TRANS_V: "https://fujixweekly.com/fujifilm-x-trans-v-recipes/",
+}
+
+TIMEOUT_SECONDS = 10
+
+
+if __name__ == "__main__":
+    sensor_recipes = {}
+    for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
+        related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
+        sensor_recipes[sensor] = FujiRecipes(sensor=sensor, base_sensor_url=sensor_url, related_recipes=related_recipes)

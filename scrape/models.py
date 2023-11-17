@@ -42,6 +42,9 @@ class FilmSimulation(Enum):
 
 
 class FujiSensor(Enum):
+    BAYER = "Bayer"
+    EXR_CMOS = "EXR-CMOS"
+    GFX = "GFX"
     X_TRANS_I = "X-Trans-I"
     X_TRANS_II = "X-Trans-II"
     X_TRANS_III = "X-Trans-III"
