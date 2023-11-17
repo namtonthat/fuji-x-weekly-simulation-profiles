@@ -1,12 +1,31 @@
 import logging
 import re
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, is_dataclass
+from enum import Enum
 from typing import ClassVar
 
 import requests
 from bs4 import BeautifulSoup
 from lxml import etree
 from models import DynamicRange, FilmSimulation, FujiEffect, FujiSensor, GrainEffectSize, WhiteBalanceSetting
+
+
+def convert_to_float(value_str):
+    """
+    Converts a string to a float. Handles both regular numbers and fractions.
+    Rounds the result to two decimal places.
+
+    Args:
+    value_str (str): The string to convert, can be a number or a fraction (e.g., '1/2').
+
+    Returns:
+    float: Rounded float value of the input string.
+    """
+    if "/" in value_str:  # Fraction handling
+        numerator, denominator = map(float, value_str.split("/"))
+        return round(numerator / denominator, 2)
+    else:
+        return round(float(value_str), 2)
 
 
 class XMLRepresentable:
@@ -41,7 +60,7 @@ class WhiteBalance(XMLRepresentable):
     setting: WhiteBalanceSetting
     red: int
     blue: int
-    color_temp: int = None
+    color_temp: str
 
 
 @dataclass
@@ -64,7 +83,8 @@ class FujiSimulationProfile:
     # Mapping between FujiSimulationProfile attributes and XML tags
     attribute_to_xml_mapping: ClassVar[dict] = {
         "film_simulation": "FilmSimulation",
-        "grain_effect": "GrainEffect",
+        "grain_effect_grain_effect": "GrainEffect",
+        "grain_effect_grain_effect_size": "GrainEffectSize",
         "color_chrome_effect": "ChromeEffect",
         "color_chrome_fx_blue": "ColorChromeBlue",
         "white_balance": "WhiteBalance",
@@ -76,7 +96,33 @@ class FujiSimulationProfile:
         "high_iso_nr": "NoisReduction",
         "clarity": "Clarity",
         "exposure_compensation": "ExposureBias",
+        "white_balance_setting": "WhiteBalance",
+        "white_balance_red": "WBShiftR",
+        "white_balance_blue": "WBShiftB",
+        "white_balance_color_temp": "WBColorTemp",
     }
+
+    def to_flat_dict(self):
+        flat_dict = vars(self).copy()
+
+        for field in fields(self):
+            field_value = getattr(self, field.name)
+
+            # Check if the field is a dataclass instance and flatten it
+            if is_dataclass(field_value):
+                for nested_field in fields(field_value):
+                    nested_field_value = getattr(field_value, nested_field.name)
+
+                    # Special handling for enum fields
+                    if isinstance(nested_field_value, Enum):
+                        nested_field_value = nested_field_value.value
+
+                    flat_dict[f"{field.name}_{nested_field.name}"] = nested_field_value
+
+                # Remove the original nested dataclass field
+                del flat_dict[field.name]
+
+        return flat_dict
 
 
 @dataclass
@@ -117,12 +163,18 @@ class FujiSimulationProfileParser:
             converted_value = FujiEffect[standardised_value].value
         elif key == "dynamic_range":
             converted_value = DynamicRange[standardised_value].value
+        elif key == "exposure_compensation":
+            exposure_regex = r"[+-]?\d+(?:/\d+)?"
+
+            matches = re.findall(exposure_regex, standardised_value)
+
+            converted_value = convert_to_float(matches[0])
+
         elif key == "film_simulation":
             converted_value = FilmSimulation[standardised_value].value
         elif key == "white_balance":
             # defaults
             temp_match = None
-            color_temp = None
 
             # Extract the temperature or setting
             if "K" in standardised_value:
@@ -143,7 +195,9 @@ class FujiSimulationProfileParser:
             blue_match = re.search(blue_regex, standardised_value)
             blue = int(blue_match.group(1)) if blue_match else 0
 
-            return WhiteBalance(setting=setting, red=red, blue=blue, color_temp=color_temp if temp_match else None)
+            return WhiteBalance(
+                setting=setting, red=red, blue=blue, color_temp=f"{color_temp}K" if temp_match else "0K"
+            )
 
         elif key == "grain_effect":
             grain_effect_values = [item.strip() for item in standardised_value.split("_")]
@@ -160,7 +214,7 @@ class FujiSimulationProfileParser:
         elif key in ["highlight", "shadow", "color", "sharpness", "high_iso_nr", "clarity"]:
             converted_value = int(value)
         else:
-            converted_value = value
+            converted_value = standardised_value
         return converted_value
 
 
@@ -182,16 +236,14 @@ class FujiXWeeklyUrlParser:
         return fuji_profile
 
 
-# Function to fill the XML template
-def fill_xml_template(profile, template):
-    for attribute_name in fields(profile.__class__):
-        attr_value = getattr(profile, attribute_name.name)
-        xml_tag = profile.attribute_to_xml_mapping.get(attribute_name.name, None)
+def fill_xml_template(profile_dict, template):
+    for attribute_name, attr_value in profile_dict.items():
+        xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(attribute_name, None)
 
         if xml_tag:
             template = replace_xml_value(template, xml_tag, attr_value)
         else:
-            print(f"Error: No XML tag mapping found for attribute '{attribute_name.name}'")
+            print(f"Error: No XML tag mapping found for attribute '{attribute_name}'")
 
     return print(template)
 
@@ -227,4 +279,4 @@ if __name__ == "__main__":
     with open("fuji_template.jinja2") as f:
         fuji_template = f.read()
 
-    fill_xml_template(fuji_profile, fuji_template)
+    fill_xml_template(fuji_profile.to_flat_dict(), fuji_template)
