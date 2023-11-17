@@ -7,7 +7,6 @@
 
 Scrape the www.fujixweekly.com for Fuji X simulation profiles
 
-- **Github repository**: <https://github.com/namtonthat/fuji-x-weekly-simluation-profiles/>
 - **Documentation** <https://namtonthat.github.io/fuji-x-weekly-simluation-profiles/>
 
 ## Getting started with your project
@@ -16,8 +15,7 @@ To finalize the set-up for publishing to PyPi or Artifactory, see [here](https:/
 For activating the automatic documentation with MkDocs, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/mkdocs/#enabling-the-documentation-on-github).
 To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/codecov/).
 
-## Releasing a new version
+## Motivations
 
----
-
-Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).
+- [plamf repo](https://github.com/plamf/fuji-x-weekly-simulation-profiles)
+- Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).
