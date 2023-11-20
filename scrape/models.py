@@ -12,9 +12,9 @@ class FujiEffect(Enum):
 
 class DynamicRange(Enum):
     DRAUTO = "AUTO"
-    DR400 = 400
-    DR200 = 200
-    DR100 = 100
+    DR400 = "400"
+    DR200 = "200"
+    DR100 = "100"
 
 
 class GrainEffectSize(Enum):
@@ -74,9 +74,9 @@ class WhiteBalanceBlueRed(Enum):
 @dataclass
 class GrainEffect:
     grain_effect: FujiEffect
-    grain_effect_size: GrainEffectSize = field(default=None)
+    grain_effect_size: GrainEffectSize | None = field(default=None)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.grain_effect == FujiEffect.OFF:
             self.grain_effect_size = None
 
@@ -108,11 +108,11 @@ class FujiSimulationProfile:
     # Optional attributes
     clarity: int = 0
     color: int = 0
-    color_chrome_effect: FujiEffect = None
-    color_chrome_fx_blue: FujiEffect = None
-    grain_effect: GrainEffect = None
+    color_chrome_effect: FujiEffect | None = field(default=None)
+    color_chrome_fx_blue: FujiEffect | None = field(default=None)
+    grain_effect: GrainEffect | None = field(default=None)
     highlight: int = 0
-    monochromatic_color: MonochomaticColor = None
+    monochromatic_color: MonochomaticColor | None = field(default=None)
     shadow: int = 0
 
     # Mapping between FujiSimulationProfile attributes and XML tags
