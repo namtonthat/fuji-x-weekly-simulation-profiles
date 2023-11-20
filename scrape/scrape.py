@@ -165,7 +165,7 @@ def clean_camera_profile_name(camera_tag: str) -> str:
 
     if camera_profile in alternative_camera_profile_names:
         camera_profile = alternative_camera_profile_names[camera_profile]
-    print(camera_profile)
+
     return camera_profile
 
 
