@@ -9,7 +9,9 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from jinja2 import Environment, FileSystemLoader, Template
-from models import (
+from requests.exceptions import RequestException
+
+from .models import (
     DynamicRange,
     FilmSimulation,
     FujiEffect,
@@ -22,7 +24,6 @@ from models import (
     WhiteBalanceBlueRed,
     WhiteBalanceSetting,
 )
-from requests.exceptions import RequestException
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
