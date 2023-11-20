@@ -10,7 +10,11 @@
 [![Build status](https://img.shields.io/github/actions/workflow/status/namtonthat/fuji-x-weekly-simulation-profiles/main.yml?branch=main)](https://github.com/namtonthat/fuji-x-weekly-simulation-profiles/actions/workflows/main.yml?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/namtonthat/fuji-x-weekly-simulation-profiles/branch/main/graph/badge.svg)](https://codecov.io/gh/namtonthat/fuji-x-weekly-simulation-profiles)
 [![License](https://img.shields.io/github/license/namtonthat/fuji-x-weekly-simulation-profiles)](https://img.shields.io/github/license/namtonthat/fuji-x-weekly-simulation-profiles)
-Scrape the www.fujixweekly.com for Fuji X simulation profiles
+
+### Purpose
+
+- Scrape the [www.fujixweekly.com](https://www.fujixweekly.com) for `Fuji X` simulation profiles
+- Copy the `.FP1` files over to `X Raw Studio` app with ease using Python
 
 ## Documentation
 
