@@ -1,4 +1,5 @@
 # A set of Enums to be used to generate the representative Fujifilm .fp1 camera settings
+import logging
 from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum
 from typing import ClassVar
@@ -139,7 +140,27 @@ class FujiSimulationProfile:
         "white_balance_color_temp": "WBColorTemp",
     }
 
+    @classmethod
+    def create_instance(cls, data: dict):
+        """
+        Validate the data and create a FujiSimulationProfile instance
+        """
+        valid_fields = {field.name for field in fields(cls)}
+        filtered_data = {}
+
+        for key, value in data.items():
+            if key in valid_fields:
+                filtered_data[key] = value
+            else:
+                logging.warning(f"Invalid key '{key}' in data. This key will be ignored.")
+
+        return cls(**filtered_data)
+
     def to_flat_dict(self) -> dict:
+        """
+        For each dataclass attribute, flatten the dataclass into a dict.
+        Use the attribute name as the prefix.
+        """
         flat_dict = vars(self).copy()
 
         for fuji_simulation_profile_field in fields(self):

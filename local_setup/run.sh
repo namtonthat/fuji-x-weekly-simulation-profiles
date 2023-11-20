@@ -1,1 +1,2 @@
-poetry run python scrape/scrape.py
+echo "Running scraper"
+poetry run python scrape/scraper.py
