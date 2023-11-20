@@ -24,9 +24,9 @@
         <MonochromaticColor_RG></MonochromaticColor_RG>
         <MonochromaticColor_WC></MonochromaticColor_WC>
         <GrainEffect>STRONG</GrainEffect>
-        <GrainEffectSize>None</GrainEffectSize>
+        <GrainEffectSize></GrainEffectSize>
         <ChromeEffect>STRONG</ChromeEffect>
-        <ColorChromeBlue>None</ColorChromeBlue>
+        <ColorChromeBlue></ColorChromeBlue>
         <SmoothSkinEffect></SmoothSkinEffect>
         <WBShootCond></WBShootCond>
         <WhiteBalance>Daylight</WhiteBalance>

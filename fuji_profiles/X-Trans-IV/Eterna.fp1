@@ -15,7 +15,7 @@
         <FileType>JPG</FileType>
         <ImageSize>L3x2</ImageSize>
         <ImageQuality>Normal</ImageQuality>
-        <ExposureBias>None</ExposureBias>
+        <ExposureBias></ExposureBias>
         <DynamicRange></DynamicRange>
         <WideDRange>100</WideDRange>
         <FilmSimulation>Eterna</FilmSimulation>
@@ -24,9 +24,9 @@
         <MonochromaticColor_RG></MonochromaticColor_RG>
         <MonochromaticColor_WC></MonochromaticColor_WC>
         <GrainEffect>STRONG</GrainEffect>
-        <GrainEffectSize>None</GrainEffectSize>
+        <GrainEffectSize></GrainEffectSize>
         <ChromeEffect>WEAK</ChromeEffect>
-        <ColorChromeBlue>None</ColorChromeBlue>
+        <ColorChromeBlue></ColorChromeBlue>
         <SmoothSkinEffect></SmoothSkinEffect>
         <WBShootCond></WBShootCond>
         <WhiteBalance>Auto</WhiteBalance>

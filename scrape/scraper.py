@@ -60,7 +60,11 @@ def fill_xml_template(profile_dict: dict, template: str) -> str:
     Returns:
     str: XML template filled with profile values.
     """
+    # logger.info('Filling template with profile_dict: "%s"', profile_dict)
     for attribute_name, attr_value in profile_dict.items():
+        if attr_value is None:
+            logger.info(f"Attribute '{attribute_name}' is None, skipping...")
+            continue
         xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(attribute_name, None)
 
         if xml_tag:
@@ -227,7 +231,13 @@ class KeyStandardizer:
         if value in dynamic_range_map:
             value = dynamic_range_map[value]
 
-        return DynamicRange[value].value
+        try:
+            dynamic_range_value = DynamicRange[value].value
+        except KeyError:
+            logger.warning("Could not parse dynamic range, setting to AUTO")
+            dynamic_range_value = DynamicRange.DRAUTO.value
+
+        return dynamic_range_value
 
     @staticmethod
     def exposure_compensation(value: str) -> float:
@@ -272,6 +282,8 @@ class KeyStandardizer:
             # Extract the temperature or setting
             if "K" in value:
                 setting = WhiteBalanceSetting.TEMPERATURE
+            elif "AWB" in value:
+                setting = WhiteBalanceSetting.AUTO
             else:
                 fluorescent_match = re.search(r"FLUORESCENT_(\d)", value)
                 if fluorescent_match:
@@ -446,6 +458,9 @@ class FujiRecipe:
                 template = self.render_template()
                 initial_filled_template = template.render(self.link.__dict__)
                 output = fill_xml_template(fuji_profile, initial_filled_template)
+                # Ensure output ends with a newline
+                if not output.endswith("\n"):
+                    output += "\n"
 
                 # Create the directory if it doesn't exist
                 directory_path = os.path.dirname(self.output_file_path)
