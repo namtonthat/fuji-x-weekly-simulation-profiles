@@ -6,6 +6,10 @@ install: ## Install the poetry environment and install the pre-commit hooks
 check: ## Run code quality tools.
 	@./local_setup/check.sh
 
+.PHONY: run
+run: ## Run code quality tools.
+	@./local_setup/run.sh
+
 .PHONY: test
 test: ## Test the code with pytest
 	@./local_setup/test.sh

@@ -63,6 +63,7 @@ class WhiteBalanceSetting(Enum):
     FLIGHT1 = "FLight1"
     FLIGHT2 = "FLight2"
     FLIGHT3 = "FLight3"
+    SHADE = "Shade"
     TEMPERATURE = "Temperature"
 
 
@@ -102,16 +103,16 @@ class FujiSimulationProfile:
     dynamic_range: DynamicRange
     sharpness: int
     high_iso_nr: int
-    iso: str
-    exposure_compensation: float
 
     # Optional attributes
     clarity: int = 0
     color: int = 0
     color_chrome_effect: FujiEffect | None = field(default=None)
     color_chrome_fx_blue: FujiEffect | None = field(default=None)
+    exposure_compensation: float | None = field(default=None)
     grain_effect: GrainEffect | None = field(default=None)
     highlight: int = 0
+    iso: str | None = field(default=None)
     monochromatic_color: MonochomaticColor | None = field(default=None)
     shadow: int = 0
 

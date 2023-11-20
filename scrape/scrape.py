@@ -9,8 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from jinja2 import Environment, FileSystemLoader, Template
-
-from .models import (
+from models import (
     DynamicRange,
     FilmSimulation,
     FujiEffect,
@@ -125,6 +124,7 @@ class FujiSimulationProfileParser:
             # Special handling for some keys
             special_keys = {
                 "color_chrome_effect_blue": "color_chrome_fx_blue",
+                "grain": "grain_effect",
                 "noise_reduction": "high_iso_nr",
                 "sharpening": "sharpness",
             }
@@ -159,13 +159,13 @@ class FujiSimulationProfileParser:
 
 
 def clean_camera_profile_name(camera_tag: str) -> str:
-    camera_profile = camera_tag.replace(" ", "_").split("/")[0].split(".")[0].upper()
+    camera_profile = camera_tag.replace(" ", "_").replace(".", "").split("/")[0].upper()
 
     alternative_camera_profile_names = {"CLASSIC_NEGATIVE": "CLASSIC_NEG"}
 
     if camera_profile in alternative_camera_profile_names:
         camera_profile = alternative_camera_profile_names[camera_profile]
-
+    print(camera_profile)
     return camera_profile
 
 
@@ -476,7 +476,7 @@ GLOBAL_SENSOR_LIST = {
     # FujiSensor.X_TRANS_I: "https://fujixweekly.com/fujifilm-x-trans-i-recipes/",
     # FujiSensor.X_TRANS_II: "https://fujixweekly.com/fujifilm-x-trans-ii-recipes/",
     # FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
-    # FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
+    FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
     FujiSensor.X_TRANS_V: "https://fujixweekly.com/fujifilm-x-trans-v-recipes/",
 }
 
