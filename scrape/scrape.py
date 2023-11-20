@@ -6,7 +6,8 @@ from dataclasses import dataclass
 import requests
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
-from models import (
+
+from .models import (
     DynamicRange,
     FilmSimulation,
     FujiEffect,
