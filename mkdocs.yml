@@ -1,11 +1,11 @@
 site_name: fuji-x-weekly-simluation-profiles
-repo_url: https://github.com/ntonthat/fuji-x-weekly-simluation-profiles
-site_url: https://ntonthat.github.io/fuji-x-weekly-simluation-profiles
-site_description: Scrape the www.fujixweekly.com for Fuji X simulation profiles
+repo_url: https://github.com/namtonthat/fuji-x-weekly-simluation-profiles
+site_url: https://namtonthat.github.io/fuji-x-weekly-simluation-profiles
+site_description: Scrape the [www.fujixweekly.com](https://www.fujixweekly.com) for Fuji X simulation profiles
 site_author: Nam Tonthat
 edit_uri: edit/main/docs/
-repo_name: ntonthat/fuji-x-weekly-simluation-profiles
-copyright: Maintained by <a href="https://ntonthat.com">Florian</a>.
+repo_name: namtonthat/fuji-x-weekly-simluation-profiles
+copyright: Maintained by <a href="https://github.io/namtonthat">Nam Tonthat</a>.
 
 nav:
   - Home: index.md
@@ -43,7 +43,7 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/ntonthat/fuji-x-weekly-simluation-profiles
+      link: https://github.com/namtonthat/fuji-x-weekly-simluation-profiles
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/fuji-x-weekly-simluation-profiles
 

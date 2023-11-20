@@ -2,7 +2,7 @@ import os
 import re
 
 # Replace this with the directory containing your fp1 XML files
-directory = "/Users/ntonthat/Downloads/fuji-x-weekly-simulation-profiles/weekly/x-trans_iv/xt4/"
+directory = "/Users/namtonthat/Downloads/fuji-x-weekly-simulation-profiles/weekly/x-trans_iv/xt4/"
 
 # Initialize a set to store unique FilmSimulation values
 unique_film_simulations = set()
