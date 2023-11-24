@@ -6,8 +6,9 @@ echo "🚀 Creating virtual environment using pyenv and poetry"
 pyenv install $PYTHON_VERSION
 pyenv virtualenv-delete -f fuji-x-weekly-simulation-profiles-$PYTHON_VERSION
 pyenv virtualenv $PYTHON_VERSION fuji-x-weekly-simulation-profiles-$PYTHON_VERSION
+pyenv local fuji-x-weekly-simulation-profiles-$PYTHON_VERSION
 
 # Install dependencies
-poetry run pre-commit install
 poetry shell
+poetry run pre-commit install
 poetry install --no-root
