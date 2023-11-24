@@ -3,14 +3,14 @@
 <!--Simulation values parsed from https://fujixweekly.com/2022/12/22/kodak-negative-fujifilm-x-t5-x-trans-v-film-simulation-recipe/ -->
 <ConversionProfile application="" version="">
     <PropertyGroup device="" version="" label="Kodak Negative" >
-        <SerialNumber></SerialNumber>
-        <TetherRAWConditonCode></TetherRAWConditonCode>
+        <SerialNumber/>
+        <TetherRAWConditonCode/>
         <Editable></Editable>
         <SourceFileName/>
         <Fileerror></Fileerror>
         <RotationAngle></RotationAngle>
         <StructVer></StructVer>
-        <IOPCode></IOPCode>
+        <IOPCode/>
         <ShootingCondition>OFF</ShootingCondition>
         <FileType>JPG</FileType>
         <ImageSize>L3x2</ImageSize>
@@ -20,9 +20,7 @@
         <WideDRange>400</WideDRange>
         <FilmSimulation>NostalgicNEGA</FilmSimulation>
         <BlackImageTone></BlackImageTone>
-        <MonochromaticColor_MG></MonochromaticColor_MG>
         <MonochromaticColor_RG></MonochromaticColor_RG>
-        <MonochromaticColor_WC></MonochromaticColor_WC>
         <GrainEffect>WEAK</GrainEffect>
         <GrainEffectSize>LARGE</GrainEffectSize>
         <ChromeEffect>OFF</ChromeEffect>

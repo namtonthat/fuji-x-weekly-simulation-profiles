@@ -1,5 +1,5 @@
-from fuji_x_weekly_simluation_profiles.foo import foo
+# from scrape.scraper
 
 
-def test_foo():
-    assert foo() == "foo"
+# def test_foo():
+#     assert foo() == "foo"

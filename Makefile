@@ -1,23 +1,28 @@
 .PHONY: install
 install: ## Install the poetry environment and install the pre-commit hooks
-	@./local_setup/setup.sh
+	@./scripts/setup.sh
 
 .PHONY: check
 check: ## Run code quality tools.
-	@./local_setup/check.sh
+	@./scripts/check.sh
 
 .PHONY: run
 run: ## Run code quality tools.
-	@./local_setup/run.sh
+	@./scripts/run.sh
 
 .PHONY: test
 test: ## Test the code with pytest
-	@./local_setup/test.sh
+	@./scripts/test.sh
 
 .PHONY: build
 build: clean-build ## Build wheel file using poetry
 	@echo "🚀 Creating wheel file"
 	@poetry build
+
+.PHONY: copy
+copy: ## Copy profiles to the required folders
+	@echo "📷 Copying fuji_profiles"
+	@poetry run python scripts/copy-fuji-profiles.py
 
 .PHONY: clean-build
 clean-build: ## clean build artifacts
