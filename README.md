@@ -16,6 +16,23 @@
 - Scrape the [www.fujixweekly.com](https://www.fujixweekly.com) for `Fuji X` simulation profiles
 - Copy the `.FP1` files over to `X Raw Studio` app with ease using Python
 
+### Getting Started
+
+```
+# Setting up your environment
+make install
+
+# Run the script to scrape the fujixweekly.com website
+make scrape
+```
+
+- To install profiles to your computer:
+
+```
+# Copy the files from fuji_profiles into your local environment
+make copy
+```
+
 ## Documentation
 
 <https://namtonthat.github.io/fuji-x-weekly-simulation-profiles/>

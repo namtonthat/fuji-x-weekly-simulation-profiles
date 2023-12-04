@@ -1,9 +1,8 @@
 import logging
 import os
 import re
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Any, ClassVar
 
 import requests
 from bs4 import BeautifulSoup
@@ -11,45 +10,12 @@ from bs4.element import Tag
 from jinja2 import Environment, FileSystemLoader, Template
 from requests.exceptions import RequestException
 
-from scrape.models import (
-    DynamicRange,
-    FilmSimulation,
-    FujiEffect,
-    FujiSensor,
-    FujiSimulationProfile,
-    GrainEffect,
-    GrainEffectSize,
-    MonochomaticColor,
-    WhiteBalance,
-    WhiteBalanceBlueRed,
-    WhiteBalanceSetting,
-)
+from scrape.models import FilmSimulation, FujiSensor, FujiSimulationProfile, KeyStandardizer, clean_camera_profile_name
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-# Example usage
 logger = logging.getLogger(__name__)
-
-
-def convert_to_float(value_str: str) -> float:
-    """
-    Converts a string to a float. Handles both regular numbers and fractions.
-    Rounds the result to two decimal places.
-
-    Args:
-    value_str (str): The string to convert, can be a number or a fraction (e.g., '1/2').
-
-    Returns:
-    float: Rounded float value of the input string.
-    """
-    if "/" in value_str:  # Fraction handling
-        numerator, denominator = map(float, value_str.split("/"))
-        return round(numerator / denominator, 2)
-    else:
-        return round(float(value_str), 2)
 
 
 def fill_xml_template(profile_dict: dict, template: str) -> str:
@@ -68,23 +34,17 @@ def fill_xml_template(profile_dict: dict, template: str) -> str:
         if attr_value is None:
             logger.info(f"Attribute '{attribute_name}' is None, skipping...")
             continue
-        xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(
-            attribute_name, None
-        )
+        xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(attribute_name, None)
 
         if xml_tag:
             template = replace_xml_value(template, xml_tag, attr_value)
         else:
-            logging.warning(
-                f"No XML tag mapping found for attribute '{attribute_name}'"
-            )
+            logging.warning(f"No XML tag mapping found for attribute '{attribute_name}'")
 
     return template
 
 
-def replace_xml_value(
-    template: str, attribute_name: str, attribute_value: str | int
-) -> str:
+def replace_xml_value(template: str, attribute_name: str, attribute_value: str | int) -> str:
     """
     Replaces the value of a specific XML tag in a template.
 
@@ -96,18 +56,10 @@ def replace_xml_value(
     Returns:
     str: Updated XML template with the new value for the specified tag.
     """
-    pattern = (
-        r"<"
-        + re.escape(attribute_name)
-        + r">(.*?)</"
-        + re.escape(attribute_name)
-        + r">"
-    )
+    pattern = r"<" + re.escape(attribute_name) + r">(.*?)</" + re.escape(attribute_name) + r">"
 
     if re.search(pattern, template):
-        return re.sub(
-            pattern, f"<{attribute_name}>{attribute_value}</{attribute_name}>", template
-        )
+        return re.sub(pattern, f"<{attribute_name}>{attribute_value}</{attribute_name}>", template)
     else:
         logger.warning(f"Error: No XML tag found for attribute '{attribute_name}'")
         return template
@@ -141,7 +93,7 @@ class FujiSimulationProfileParser:
 
         processed_tags = list(flatten_and_process_tags(self.tags))
 
-        # logger.info("Processed tags: %s", processed_tags)
+        logger.debug("Processed tags: %s", processed_tags)
         return processed_tags
 
     @property
@@ -177,10 +129,8 @@ class FujiSimulationProfileParser:
 
             KeyStandardizer.initialise_parsing_methods()
             clean_key = standardise_key_names(key)
-            clean_value = KeyStandardizer.parse_key_and_standardise_value(
-                clean_key, value
-            )
-
+            clean_value = KeyStandardizer.parse_key_and_standardise_value(clean_key, value)
+            logger.debug("Parsing key '%s' with value '%s'", clean_key, clean_value)
             profile_dict[clean_key] = clean_value
 
         return profile_dict
@@ -198,220 +148,6 @@ class FujiSimulationProfileParser:
             return fuji_profile
 
 
-def clean_camera_profile_name(camera_tag: str) -> str:
-    camera_profile = camera_tag.replace(" ", "_").replace(".", "").split("/")[0].upper()
-
-    alternative_camera_profile_names = {"CLASSIC_NEGATIVE": "CLASSIC_NEG"}
-
-    if camera_profile in alternative_camera_profile_names:
-        camera_profile = alternative_camera_profile_names[camera_profile]
-
-    return camera_profile
-
-
-@dataclass
-class KeyStandardizer:
-    _parsing_methods: ClassVar[dict[str, Callable[..., Any]]] = {}
-
-    @staticmethod
-    def clean_string(text_string: str) -> str:
-        """
-        Utility method to clean and standardize a string.
-        """
-        return text_string.replace(" ", "_").replace(",", "").replace("-", "").upper()
-
-    @staticmethod
-    def parse_key_and_standardise_value(key: str, value: str) -> Any:
-        """
-        Standardizes the given key and value based on predefined parsing methods.
-
-        Args:
-            key (str): The key to be parsed.
-            value (str): The value to be standardized.
-
-        Returns:
-            Standardized value based on the key.
-        """
-        standardised_value = KeyStandardizer.clean_string(value)
-
-        # Use custom parsing method if available for the key
-        parsing_method = KeyStandardizer._parsing_methods.get(key)
-        if parsing_method:
-            return parsing_method(standardised_value)
-
-        return standardised_value
-
-    @staticmethod
-    def color_chrome_effect(value: str) -> str:
-        return FujiEffect[value].value
-
-    @staticmethod
-    def dynamic_range(value: str) -> str:
-        dynamic_range_map = {
-            "DRANGE_PRIORITY_(DRP)_AUTO": "DRAUTO",
-        }
-        if value in dynamic_range_map:
-            value = dynamic_range_map[value]
-
-        try:
-            dynamic_range_value = DynamicRange[value].value
-        except KeyError:
-            logger.warning("Could not parse dynamic range, setting to AUTO")
-            dynamic_range_value = DynamicRange.DRAUTO.value
-
-        return dynamic_range_value
-
-    @staticmethod
-    def exposure_compensation(value: str) -> float:
-        exposure_regex = r"[+-]?\d+(?:/\d+)?"
-        matches = re.findall(exposure_regex, value)
-        return convert_to_float(matches[0])
-
-    @staticmethod
-    def film_simluation(value: str) -> str:
-        camera_profile_value = clean_camera_profile_name(value)
-        return FilmSimulation[camera_profile_value].value
-
-    @staticmethod
-    def grain_effect(value: str) -> GrainEffect:
-        grain_effect_values = [item.strip() for item in value.split("_")]
-
-        try:
-            grain_effect = FujiEffect[
-                grain_effect_values[0]
-            ]  # Convert string to FujiEffect enum member
-            grain_effect_size = (
-                GrainEffectSize[grain_effect_values[1]]
-                if len(grain_effect_values) > 1
-                else None
-            )  # Convert string to GrainEffectSize enum member or None
-
-            return GrainEffect(
-                grain_effect=grain_effect, grain_effect_size=grain_effect_size
-            )
-        except (IndexError, KeyError):
-            logger.warning("Could not parse grain effect, setting to FujiEffect.OFF")
-            return GrainEffect(
-                grain_effect=FujiEffect.OFF
-            )  # Use FujiEffect.OFF directly without .value
-
-    @staticmethod
-    def white_balance(value: str) -> WhiteBalance:
-        def get_color_temperature(value: str) -> str:
-            """
-            Extracts the color temperature from the string
-            Defaults to 0K if no color temperature is found
-            """
-            temp_match = re.search(r"(\d+)K", value)
-            color_temp = int(temp_match.group(1)) if temp_match else None
-            color_temp_value = f"{color_temp}K" if color_temp else "0K"
-
-            return color_temp_value
-
-        def get_white_balance_setting(value: str) -> tuple[WhiteBalanceSetting, str]:
-            color_temp = get_color_temperature(value)
-
-            # Extract the temperature or setting
-            if "K" in value:
-                setting = WhiteBalanceSetting.TEMPERATURE
-            elif "AWB" in value:
-                setting = WhiteBalanceSetting.AUTO
-            else:
-                fluorescent_match = re.search(r"FLUORESCENT_(\d)", value)
-                if fluorescent_match:
-                    # Check if it's a fluorescent setting
-                    special_mappings = {
-                        "FLUORESCENT_1": WhiteBalanceSetting.FLIGHT1,
-                        "FLUORESCENT_2": WhiteBalanceSetting.FLIGHT2,
-                        "FLUORESCENT_3": WhiteBalanceSetting.FLIGHT3,
-                    }
-                    flight_number = fluorescent_match.group(1)
-                    setting = special_mappings[f"FLUORESCENT_{flight_number}"]
-                else:
-                    setting_match = re.match(r"([^_]+)", value)
-                    setting_name = (
-                        setting_match.group(1).upper() if setting_match else "AUTO"
-                    )
-                    setting = WhiteBalanceSetting[setting_name]
-
-            return setting, color_temp
-
-        def get_blue_red_numeric_value(
-            value: str, blue_or_red: WhiteBalanceBlueRed
-        ) -> int:
-            "Extracts the blue or red (+-) integer value from the string"
-            numeric_red_blue_regex = {
-                WhiteBalanceBlueRed.BLUE: r"([+-]?\d+)_BLUE",
-                WhiteBalanceBlueRed.RED: r"([+-]?\d+)_RED",
-            }
-
-            related_regex = numeric_red_blue_regex[blue_or_red]
-            match = re.search(related_regex, value)
-            return int(match.group(1)) if match else 0
-
-        blue = get_blue_red_numeric_value(value, WhiteBalanceBlueRed.BLUE)
-        red = get_blue_red_numeric_value(value, WhiteBalanceBlueRed.RED)
-        # Defaults
-        setting, color_temp = get_white_balance_setting(value)
-
-        return WhiteBalance(setting=setting, red=red, blue=blue, color_temp=color_temp)
-
-    @staticmethod
-    def numerical_values(value: str) -> int:
-        int_regex = r"([+-]?\d+)"
-        match = re.search(int_regex, value)
-        if match:
-            converted_value = int(match.group(0))
-        else:
-            logger.warning("Could not convert %s to int, setting to 0", value)
-            converted_value = 0
-
-        return converted_value
-
-    @staticmethod
-    def monochromatic_color(value: str) -> MonochomaticColor:
-        """
-        Extracts the monochromatic color from the string
-        Example:
-            value: Monochromatic Color: 0 WC & 0 MG
-        Return:
-            0
-        """
-        monochromatic_color_regex = r"(\d+)_WC_&_(\d+)_MG"
-        match = re.search(monochromatic_color_regex, value)
-
-        if match:
-            warm_cool = int(match.group(1))
-            magenta_green = int(match.group(2))
-        else:
-            logger.warning(
-                "Could not convert %s to MonochromaticColor, setting to 0", value
-            )
-            warm_cool = 0
-            magenta_green = 0
-
-        return MonochomaticColor(
-            warm_cool=warm_cool,
-            magenta_green=magenta_green,
-        )
-
-    @classmethod
-    def initialise_parsing_methods(cls) -> None:
-        cls._parsing_methods = {
-            "color_chrome_effect": KeyStandardizer.color_chrome_effect,
-            "dynamic_range": KeyStandardizer.dynamic_range,
-            "exposure_compensation": KeyStandardizer.exposure_compensation,
-            "film_simulation": KeyStandardizer.film_simluation,
-            "grain_effect": KeyStandardizer.grain_effect,
-            "high_iso_nr": KeyStandardizer.numerical_values,
-            "highlight": KeyStandardizer.numerical_values,
-            "shadow": KeyStandardizer.numerical_values,
-            "sharpness": KeyStandardizer.numerical_values,
-            "white_balance": KeyStandardizer.white_balance,
-            "monochromatic_color": KeyStandardizer.monochromatic_color,
-        }
-
-
 @dataclass
 class FujiRecipeLink:
     name: str
@@ -427,7 +163,7 @@ class FujiRecipeLink:
         if self.url is None:
             return False
 
-        return bool(re.match(FujiRecipeLink.recipe_url_pattern, self.url))
+        return bool(re.match(self.recipe_url_pattern, self.url))
 
     @staticmethod
     def clean_name(name: str) -> str:
@@ -472,46 +208,44 @@ class FujiRecipe:
     def output_file_path(self) -> str:
         return f"fuji_profiles/{self.sensor.value}/{self.link.name}.FP1"
 
+    @property
+    def jinja2_template(self) -> Template:
+        "Returns a Jinja2 template object"
+        template_dir = os.getcwd()
+        file_loader = FileSystemLoader(template_dir)
+        env = Environment(loader=file_loader, autoescape=True)
+        template = env.get_template(self.template_location)
+        return template
+
+    @property
+    def filled_template(self) -> str:
+        "Returns a filled Jinja2 template as a string"
+        initial_filled_template = self.jinja2_template.render(self.link.__dict__)
+        filled_template = fill_xml_template(self.as_dict(), initial_filled_template) + "\n"
+        return filled_template
+
     def as_dict(self) -> dict:
-        fuji_profile = FujiRecipeLink(
-            name=self.link.name, url=self.link.url
-        ).get_profile()
+        fuji_profile = FujiRecipeLink(name=self.link.name, url=self.link.url).get_profile()
         if isinstance(fuji_profile, FujiSimulationProfile):
             return fuji_profile.to_flat_dict()
         else:
             logger.warning(f"Failed to get profile for {self.link.url}")
             return {}
 
-    def render_template(self) -> Template:
-        template_dir = os.getcwd()
-        file_loader = FileSystemLoader(template_dir)
-        env = Environment(loader=file_loader, autoescape=True)
-        template = env.get_template(self.template_location)
-
-        return template
-
     def save(self) -> None:
         try:
             fuji_profile = self.as_dict()
 
             if fuji_profile:
-                template = self.render_template()
-                initial_filled_template = template.render(self.link.__dict__)
-                output = fill_xml_template(fuji_profile, initial_filled_template)
-                # Ensure output ends with a newline
-                if not output.endswith("\n"):
-                    output += "\n"
-
+                output = self.filled_template
                 # Create the directory if it doesn't exist
                 directory_path = os.path.dirname(self.output_file_path)
                 os.makedirs(directory_path, exist_ok=True)
-                logger.info('Saving recipe "%s"', recipe.link.name)
+                logger.info('Saving recipe "%s"', self.link.name)
 
                 with open(self.output_file_path, "w") as f:
                     f.write(output)
                 logger.info(f"Profile saved successfully to {self.output_file_path}")
-            else:
-                logger.warning("No profile exists for self.link.url. Skipping...")
 
         except Exception:
             logger.exception(f"Failed to save profile for {self.link.url}")
@@ -532,9 +266,7 @@ class FujiRecipes:
     @classmethod
     def max_recipes(cls, sensor_url: str) -> int:
         soup = cls.soup_representation(sensor_url)
-        recipe_links = soup.find_all(
-            "a", href=re.compile(FujiRecipeLink.recipe_url_pattern)
-        )
+        recipe_links = soup.find_all("a", href=re.compile(FujiRecipeLink.recipe_url_pattern))
         return len(recipe_links)
 
     @classmethod
@@ -563,9 +295,7 @@ class FujiRecipes:
 
         # Validation Step
         if len(related_recipes) > cls.max_recipes(sensor_url):
-            logger.warning(
-                f"More recipes fetched ({len(related_recipes)}) than the expected maximum."
-            )
+            logger.warning(f"More recipes fetched ({len(related_recipes)}) than the expected maximum.")
         return related_recipes
 
 
@@ -575,7 +305,7 @@ GLOBAL_SENSOR_LIST = {
     # FujiSensor.GFX: "https://fujixweekly.com/fujifilm-gfx-recipes/",
     # FujiSensor.X_TRANS_I: "https://fujixweekly.com/fujifilm-x-trans-i-recipes/",
     # FujiSensor.X_TRANS_II: "https://fujixweekly.com/fujifilm-x-trans-ii-recipes/",
-    # FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
+    FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
     # FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
     FujiSensor.X_TRANS_V: "https://fujixweekly.com/fujifilm-x-trans-v-recipes/",
 }
@@ -590,4 +320,5 @@ if __name__ == "__main__":
         related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
 
         for recipe in related_recipes:
+            # if recipe.link.name == "1976 Kodak":
             recipe.save()
