@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import OrderedDict
 from dataclasses import dataclass, field
 
 from lxml import etree as ET
@@ -170,7 +171,8 @@ def list_folders_with_subfolders(base_path):
         if os.path.isdir(item_path):
             subfolders = [f for f in os.listdir(item_path) if os.path.isdir(os.path.join(item_path, f))]
             folder_dict[item] = subfolders
-    return folder_dict
+    sorted_dict = OrderedDict(sorted(folder_dict.items()))
+    return sorted_dict
 
 
 def select_folder(folder_dict):
