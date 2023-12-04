@@ -13,12 +13,9 @@ from requests.exceptions import RequestException
 from scrape.models import FilmSimulation, FujiSensor, FujiSimulationProfile, KeyStandardizer, clean_camera_profile_name
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 logger = logging.getLogger(__name__)
-
 
 
 def fill_xml_template(profile_dict: dict, template: str) -> str:
@@ -37,23 +34,17 @@ def fill_xml_template(profile_dict: dict, template: str) -> str:
         if attr_value is None:
             logger.info(f"Attribute '{attribute_name}' is None, skipping...")
             continue
-        xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(
-            attribute_name, None
-        )
+        xml_tag = FujiSimulationProfile.attribute_to_xml_mapping.get(attribute_name, None)
 
         if xml_tag:
             template = replace_xml_value(template, xml_tag, attr_value)
         else:
-            logging.warning(
-                f"No XML tag mapping found for attribute '{attribute_name}'"
-            )
+            logging.warning(f"No XML tag mapping found for attribute '{attribute_name}'")
 
     return template
 
 
-def replace_xml_value(
-    template: str, attribute_name: str, attribute_value: str | int
-) -> str:
+def replace_xml_value(template: str, attribute_name: str, attribute_value: str | int) -> str:
     """
     Replaces the value of a specific XML tag in a template.
 
@@ -65,18 +56,10 @@ def replace_xml_value(
     Returns:
     str: Updated XML template with the new value for the specified tag.
     """
-    pattern = (
-        r"<"
-        + re.escape(attribute_name)
-        + r">(.*?)</"
-        + re.escape(attribute_name)
-        + r">"
-    )
+    pattern = r"<" + re.escape(attribute_name) + r">(.*?)</" + re.escape(attribute_name) + r">"
 
     if re.search(pattern, template):
-        return re.sub(
-            pattern, f"<{attribute_name}>{attribute_value}</{attribute_name}>", template
-        )
+        return re.sub(pattern, f"<{attribute_name}>{attribute_value}</{attribute_name}>", template)
     else:
         logger.warning(f"Error: No XML tag found for attribute '{attribute_name}'")
         return template
@@ -146,9 +129,7 @@ class FujiSimulationProfileParser:
 
             KeyStandardizer.initialise_parsing_methods()
             clean_key = standardise_key_names(key)
-            clean_value = KeyStandardizer.parse_key_and_standardise_value(
-                clean_key, value
-            )
+            clean_value = KeyStandardizer.parse_key_and_standardise_value(clean_key, value)
             logger.debug("Parsing key '%s' with value '%s'", clean_key, clean_value)
             profile_dict[clean_key] = clean_value
 
@@ -173,6 +154,7 @@ class FujiRecipeLink:
     url: str
 
     recipe_url_pattern: str = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*recipe/$"
+
     def __post_init__(self):
         self.name = self.clean_name(self.name)
 
@@ -243,15 +225,12 @@ class FujiRecipe:
         return filled_template
 
     def as_dict(self) -> dict:
-        fuji_profile = FujiRecipeLink(
-            name=self.link.name, url=self.link.url
-        ).get_profile()
+        fuji_profile = FujiRecipeLink(name=self.link.name, url=self.link.url).get_profile()
         if isinstance(fuji_profile, FujiSimulationProfile):
             return fuji_profile.to_flat_dict()
         else:
             logger.warning(f"Failed to get profile for {self.link.url}")
             return {}
-
 
     def save(self) -> None:
         try:
@@ -287,9 +266,7 @@ class FujiRecipes:
     @classmethod
     def max_recipes(cls, sensor_url: str) -> int:
         soup = cls.soup_representation(sensor_url)
-        recipe_links = soup.find_all(
-            "a", href=re.compile(FujiRecipeLink.recipe_url_pattern)
-        )
+        recipe_links = soup.find_all("a", href=re.compile(FujiRecipeLink.recipe_url_pattern))
         return len(recipe_links)
 
     @classmethod
@@ -318,9 +295,7 @@ class FujiRecipes:
 
         # Validation Step
         if len(related_recipes) > cls.max_recipes(sensor_url):
-            logger.warning(
-                f"More recipes fetched ({len(related_recipes)}) than the expected maximum."
-            )
+            logger.warning(f"More recipes fetched ({len(related_recipes)}) than the expected maximum.")
         return related_recipes
 
 
@@ -330,7 +305,7 @@ GLOBAL_SENSOR_LIST = {
     # FujiSensor.GFX: "https://fujixweekly.com/fujifilm-gfx-recipes/",
     # FujiSensor.X_TRANS_I: "https://fujixweekly.com/fujifilm-x-trans-i-recipes/",
     # FujiSensor.X_TRANS_II: "https://fujixweekly.com/fujifilm-x-trans-ii-recipes/",
-    # FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
+    FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
     # FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
     FujiSensor.X_TRANS_V: "https://fujixweekly.com/fujifilm-x-trans-v-recipes/",
 }
@@ -346,4 +321,4 @@ if __name__ == "__main__":
 
         for recipe in related_recipes:
             # if recipe.link.name == "1976 Kodak":
-                recipe.save()
+            recipe.save()
