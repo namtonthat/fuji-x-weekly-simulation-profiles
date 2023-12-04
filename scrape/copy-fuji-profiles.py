@@ -7,17 +7,20 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.prompt import Prompt
 
+from scrape.models import FujiSensor
+
 # Global variable
-BASE_PATH = os.path.expanduser(
-    "~/Library/Application Support/com.fujifilm.denji/X RAW STUDIO"
-)
+BASE_PATH = os.path.expanduser("~/Library/Application Support/com.fujifilm.denji/X RAW STUDIO")
 FUJI_EXTENSION = ".FP1"
 
 # Setup rich console and logging
 console = Console()
-logging.basicConfig(
-    level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
-)
+logging.basicConfig(level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
+
+COMPATIBILITY_MAPPING = {
+    FujiSensor.X_TRANS_IV: ["X-T3", "X-T30", "X-Pro3", "X100V", "X-T4", "X-S10"],
+    FujiSensor.X_TRANS_V: ["X-T5", "X-H2", "X-H2S"],
+}
 
 
 # Value error subclasses
@@ -36,9 +39,7 @@ class InvalidSelectionError(ValueError):
 
 class NoValidFileError(ValueError):
     def __init__(self, file_extension):
-        super().__init__(
-            f"No valid {file_extension} file found in the destination folder."
-        )
+        super().__init__(f"No valid {file_extension} file found in the destination folder.")
 
 
 @dataclass
@@ -123,9 +124,7 @@ class FP1File:
 
     def save(self):
         with open(self.destination_file_path, "wb") as file:
-            self.xml_tree.write(
-                file, pretty_print=True, xml_declaration=True, encoding="UTF-8"
-            )
+            self.xml_tree.write(file, pretty_print=True, xml_declaration=True, encoding="UTF-8")
             console.print(f"Saving {self.destination_file_path}", style="green")
 
 
@@ -146,9 +145,7 @@ class FP1TemplateFiles:
                 valid_files.append(
                     FP1File(
                         source_file_path=os.path.join(self.source_directory, file_name),
-                        destination_file_path=os.path.join(
-                            self.destination_directory, file_name
-                        ),
+                        destination_file_path=os.path.join(self.destination_directory, file_name),
                     )
                 )
             else:
@@ -165,11 +162,7 @@ def list_folders_with_subfolders(base_path):
     for item in os.listdir(base_path):
         item_path = os.path.join(base_path, item)
         if os.path.isdir(item_path):
-            subfolders = [
-                f
-                for f in os.listdir(item_path)
-                if os.path.isdir(os.path.join(item_path, f))
-            ]
+            subfolders = [f for f in os.listdir(item_path) if os.path.isdir(os.path.join(item_path, f))]
             folder_dict[item] = subfolders
     return folder_dict
 
@@ -187,9 +180,7 @@ def select_folder(folder_dict):
     for i, option in enumerate(options):
         console.print(f"{i + 1}: {option}", style="yellow")
 
-    choice = Prompt.ask(
-        "Select a folder by number", choices=[str(i + 1) for i in range(len(options))]
-    )
+    choice = Prompt.ask("Select a folder by number", choices=[str(i + 1) for i in range(len(options))])
     choice = int(choice) - 1
     if choice < 0 or choice >= len(options):
         raise InvalidSelectionError()
@@ -206,6 +197,40 @@ def find_valid_fp1_file(directory):
     return None
 
 
+def normalize_sensor_name(sensor_name: str) -> str:
+    """
+    Normalize the sensor name to match the enum member names.
+    Example: 'X-Trans-IV' -> 'X_TRANS_IV'
+    """
+    return sensor_name.replace("-", "_").upper()
+
+
+def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
+    """
+    Checks the sensor type from the fuji_profiles_path and spits out a warning
+    if the destination_path is not compatiable
+    """
+    normalized_sensor_name = normalize_sensor_name(selected_sensor)
+    selected_sensor_enum = FujiSensor[normalized_sensor_name]
+    compatiable_camera_models = COMPATIBILITY_MAPPING.get(selected_sensor_enum)
+    camera_model = destination_path.split("/")[-1]
+
+    try:
+        compatiable_sensor_type = camera_model in compatiable_camera_models
+
+        if not compatiable_sensor_type:
+            console.print(
+                f"Warning: {camera_model} is not a compatiable sensor type;",
+                "These might not be interpretted properly once copied over.",
+                style="bold red",
+            )
+            return False
+    except KeyError:
+        console.print(f"Could not find {camera_model} in the compatiable sensor types.")
+        return False
+    return True
+
+
 def main():
     current_dir = os.getcwd()
     fuji_profiles_dir = os.path.join(current_dir, "fuji_profiles")
@@ -220,6 +245,8 @@ def main():
     selected_destination_folder = select_folder(destination_folders)
     destination_path = os.path.join(BASE_PATH, selected_destination_folder)
 
+    is_compatiable_sensor(selected_profile_folder, destination_path)
+
     valid_fp1_file = find_valid_fp1_file(destination_path)
     if not valid_fp1_file:
         raise NoValidFileError(FUJI_EXTENSION)
@@ -230,9 +257,7 @@ def main():
     if not os.path.exists(destination_path):
         os.makedirs(destination_path)
 
-    fuji_template_files = FP1TemplateFiles(
-        source_directory=fuji_profiles_path, destination_directory=destination_path
-    )
+    fuji_template_files = FP1TemplateFiles(source_directory=fuji_profiles_path, destination_directory=destination_path)
     for fp1_file in fuji_template_files.template_files:
         fp1_file.apply_tags(tags_to_apply)
         fp1_file.save()

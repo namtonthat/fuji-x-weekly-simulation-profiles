@@ -185,7 +185,6 @@ class FujiSimulationProfile:
         return flat_dict
 
 
-
 def clean_camera_profile_name(camera_tag: str) -> str:
     camera_profile = camera_tag.replace(" ", "_").replace(".", "").split("/")[0].upper()
 
@@ -195,6 +194,7 @@ def clean_camera_profile_name(camera_tag: str) -> str:
         camera_profile = alternative_camera_profile_names[camera_profile]
 
     return camera_profile
+
 
 def convert_to_float(value_str: str) -> float:
     """
@@ -212,6 +212,7 @@ def convert_to_float(value_str: str) -> float:
         return round(numerator / denominator, 2)
     else:
         return round(float(value_str), 2)
+
 
 @dataclass
 class KeyStandardizer:
@@ -281,23 +282,15 @@ class KeyStandardizer:
         grain_effect_values = [item.strip() for item in value.split("_")]
 
         try:
-            grain_effect = FujiEffect[
-                grain_effect_values[0]
-            ]  # Convert string to FujiEffect enum member
+            grain_effect = FujiEffect[grain_effect_values[0]]  # Convert string to FujiEffect enum member
             grain_effect_size = (
-                GrainEffectSize[grain_effect_values[1]]
-                if len(grain_effect_values) > 1
-                else None
+                GrainEffectSize[grain_effect_values[1]] if len(grain_effect_values) > 1 else None
             )  # Convert string to GrainEffectSize enum member or None
 
-            return GrainEffect(
-                grain_effect=grain_effect, grain_effect_size=grain_effect_size
-            )
+            return GrainEffect(grain_effect=grain_effect, grain_effect_size=grain_effect_size)
         except (IndexError, KeyError):
             logging.warning("Could not parse grain effect, setting to FujiEffect.OFF")
-            return GrainEffect(
-                grain_effect=FujiEffect.OFF
-            )  # Use FujiEffect.OFF directly without .value
+            return GrainEffect(grain_effect=FujiEffect.OFF)  # Use FujiEffect.OFF directly without .value
 
     @staticmethod
     def white_balance(value: str) -> WhiteBalance:
@@ -333,16 +326,12 @@ class KeyStandardizer:
                     setting = special_mappings[f"FLUORESCENT_{flight_number}"]
                 else:
                     setting_match = re.match(r"([^_]+)", value)
-                    setting_name = (
-                        setting_match.group(1).upper() if setting_match else "AUTO"
-                    )
+                    setting_name = setting_match.group(1).upper() if setting_match else "AUTO"
                     setting = WhiteBalanceSetting[setting_name]
 
             return setting, color_temp
 
-        def get_blue_red_numeric_value(
-            value: str, blue_or_red: WhiteBalanceBlueRed
-        ) -> int:
+        def get_blue_red_numeric_value(value: str, blue_or_red: WhiteBalanceBlueRed) -> int:
             "Extracts the blue or red (+-) integer value from the string"
             numeric_red_blue_regex = {
                 WhiteBalanceBlueRed.BLUE: r"([+-]?\d+)_BLUE",
@@ -363,12 +352,13 @@ class KeyStandardizer:
 
     @staticmethod
     def numerical_value(value: str) -> float:
-            # Regular expression to match both integer and floating-point numbers
+        # Regular expression to match both integer and floating-point numbers
         number_regex = r"([+-]?\d+(\.\d+)?)"
         match = re.search(number_regex, value)
         if match:
             number_str = match.group(0).replace("+", "")
-            if '.' in number_str:  # Check if the number has a decimal part
+            if "." in number_str:  # Check if the number has a decimal part
+                # Should only be the case for highlights / shadows
                 return float(number_str)
             else:
                 return int(number_str)
@@ -376,7 +366,6 @@ class KeyStandardizer:
             logging.warning("Could not convert %s to float, setting to 0", value)
             converted_value = 0.0
         return converted_value
-
 
     @staticmethod
     def monochromatic_color(value: str) -> MonochomaticColor:
@@ -394,9 +383,7 @@ class KeyStandardizer:
             warm_cool = int(match.group(1))
             magenta_green = int(match.group(2))
         else:
-            logging.warning(
-                "Could not convert %s to MonochromaticColor, setting to 0", value
-            )
+            logging.warning("Could not convert %s to MonochromaticColor, setting to 0", value)
             warm_cool = 0
             magenta_green = 0
 

@@ -6,27 +6,19 @@ install: ## Install the poetry environment and install the pre-commit hooks
 check: ## Run code quality tools.
 	@./scripts/check.sh
 
-.PHONY: run
-run: ## Run code quality tools.
-	@./scripts/run.sh
+.PHONY: scrape
+scrape: ## Scrape the data from the Fuji X Weekly website
+	@echo "📷 Scraping data from Fuji X Weekly"
+	@poetry run python -m scrape.scraper
 
 .PHONY: test
 test: ## Test the code with pytest
 	@./scripts/test.sh
 
-.PHONY: build
-build: clean-build ## Build wheel file using poetry
-	@echo "🚀 Creating wheel file"
-	@poetry build
-
 .PHONY: copy
 copy: ## Copy profiles to the required folders
 	@echo "📷 Copying fuji_profiles"
-	@poetry run python scripts/copy-fuji-profiles.py
-
-.PHONY: clean-build
-clean-build: ## clean build artifacts
-	@rm -rf dist
+	@poetry run python -m scrape.copy-fuji-profiles
 
 .PHONY: docs-test
 docs-test: ## Test if documentation can be built without warnings or errors

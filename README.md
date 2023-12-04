@@ -23,7 +23,7 @@
 make install
 
 # Run the script to scrape the fujixweekly.com website
-make run
+make scrape
 ```
 
 - To install profiles to your computer:
