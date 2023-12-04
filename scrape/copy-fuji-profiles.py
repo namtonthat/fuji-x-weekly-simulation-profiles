@@ -18,8 +18,14 @@ console = Console()
 logging.basicConfig(level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
 
 COMPATIBILITY_MAPPING = {
+    FujiSensor.BAYER: ["X-A1", "X-A2", "X-A3", "X-A5", "X-A7", "X-A10", "XF10", "X-T100", "X-T200"],
+    FujiSensor.GFX: ["GFX50R", "GFX50S", "GFX100"],
+    FujiSensor.EXR_CMOS: ["X100", "XF1", "X10", "X-S1"],
+    FujiSensor.X_TRANS_I: ["X-Pro1", "X-E1", "X-M1"],
+    FujiSensor.X_TRANS_II: ["X100S", "X100T", "X-E2", "X-E2S", "X-T1", "X-T10", "X70", "X20", "X30", "XQ1", "XQ2"],
+    FujiSensor.X_TRANS_III: ["X-T2", "X-Pro2", "X100F", "X-T20", "X-E3", "X-H1", "X-T30"],
     FujiSensor.X_TRANS_IV: ["X-T3", "X-T30", "X-Pro3", "X100V", "X-T4", "X-S10"],
-    FujiSensor.X_TRANS_V: ["X-T5", "X-H2", "X-H2S"],
+    FujiSensor.X_TRANS_V: ["X-T5", "X-H2", "X-H2S", "X-S20", "GFX100S", "GFX50SII"],
 }
 
 
