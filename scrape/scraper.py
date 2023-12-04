@@ -141,7 +141,7 @@ class FujiSimulationProfileParser:
 
         processed_tags = list(flatten_and_process_tags(self.tags))
 
-        # logger.info("Processed tags: %s", processed_tags)
+        logger.debug("Processed tags: %s", processed_tags)
         return processed_tags
 
     @property
@@ -180,7 +180,7 @@ class FujiSimulationProfileParser:
             clean_value = KeyStandardizer.parse_key_and_standardise_value(
                 clean_key, value
             )
-
+            # logger.info("Parsing key '%s' with value '%s'", clean_key, clean_value)
             profile_dict[clean_key] = clean_value
 
         return profile_dict
@@ -218,7 +218,7 @@ class KeyStandardizer:
         """
         Utility method to clean and standardize a string.
         """
-        return text_string.replace(" ", "_").replace(",", "").replace("-", "").upper()
+        return text_string.replace(" ", "_").replace(",", "").upper()
 
     @staticmethod
     def parse_key_and_standardise_value(key: str, value: str) -> Any:
@@ -349,6 +349,7 @@ class KeyStandardizer:
             match = re.search(related_regex, value)
             return int(match.group(1)) if match else 0
 
+        # Extract the blue and red values / color temperature
         blue = get_blue_red_numeric_value(value, WhiteBalanceBlueRed.BLUE)
         red = get_blue_red_numeric_value(value, WhiteBalanceBlueRed.RED)
         # Defaults
@@ -357,14 +358,14 @@ class KeyStandardizer:
         return WhiteBalance(setting=setting, red=red, blue=blue, color_temp=color_temp)
 
     @staticmethod
-    def numerical_values(value: str) -> int:
-        int_regex = r"([+-]?\d+)"
-        match = re.search(int_regex, value)
+    def numerical_values(value: str) -> float:
+        number_regex = r"([+-]?\d+(\.\d+)?)"
+        match = re.search(number_regex, value)
         if match:
-            converted_value = int(match.group(0))
+            converted_value = float(match.group(0))
         else:
-            logger.warning("Could not convert %s to int, setting to 0", value)
-            converted_value = 0
+            logger.warning("Could not convert %s to float, setting to 0", value)
+            converted_value = 0.0
 
         return converted_value
 
@@ -418,7 +419,6 @@ class FujiRecipeLink:
     url: str
 
     recipe_url_pattern: str = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*recipe/$"
-
     def __post_init__(self):
         self.name = self.clean_name(self.name)
 
@@ -427,7 +427,7 @@ class FujiRecipeLink:
         if self.url is None:
             return False
 
-        return bool(re.match(FujiRecipeLink.recipe_url_pattern, self.url))
+        return bool(re.match(self.recipe_url_pattern, self.url))
 
     @staticmethod
     def clean_name(name: str) -> str:
@@ -472,6 +472,22 @@ class FujiRecipe:
     def output_file_path(self) -> str:
         return f"fuji_profiles/{self.sensor.value}/{self.link.name}.FP1"
 
+    @property
+    def jinja2_template(self) -> Template:
+        "Returns a Jinja2 template object"
+        template_dir = os.getcwd()
+        file_loader = FileSystemLoader(template_dir)
+        env = Environment(loader=file_loader, autoescape=True)
+        template = env.get_template(self.template_location)
+        return template
+
+    @property
+    def filled_template(self) -> str:
+        "Returns a filled Jinja2 template as a string"
+        initial_filled_template = self.jinja2_template.render(self.link.__dict__)
+        filled_template = fill_xml_template(self.as_dict(), initial_filled_template)
+        return filled_template
+
     def as_dict(self) -> dict:
         fuji_profile = FujiRecipeLink(
             name=self.link.name, url=self.link.url
@@ -482,36 +498,21 @@ class FujiRecipe:
             logger.warning(f"Failed to get profile for {self.link.url}")
             return {}
 
-    def render_template(self) -> Template:
-        template_dir = os.getcwd()
-        file_loader = FileSystemLoader(template_dir)
-        env = Environment(loader=file_loader, autoescape=True)
-        template = env.get_template(self.template_location)
-
-        return template
 
     def save(self) -> None:
         try:
             fuji_profile = self.as_dict()
 
             if fuji_profile:
-                template = self.render_template()
-                initial_filled_template = template.render(self.link.__dict__)
-                output = fill_xml_template(fuji_profile, initial_filled_template)
-                # Ensure output ends with a newline
-                if not output.endswith("\n"):
-                    output += "\n"
-
+                output = self.filled_template
                 # Create the directory if it doesn't exist
                 directory_path = os.path.dirname(self.output_file_path)
                 os.makedirs(directory_path, exist_ok=True)
-                logger.info('Saving recipe "%s"', recipe.link.name)
+                logger.info('Saving recipe "%s"', self.link.name)
 
                 with open(self.output_file_path, "w") as f:
                     f.write(output)
                 logger.info(f"Profile saved successfully to {self.output_file_path}")
-            else:
-                logger.warning("No profile exists for self.link.url. Skipping...")
 
         except Exception:
             logger.exception(f"Failed to save profile for {self.link.url}")
@@ -590,4 +591,4 @@ if __name__ == "__main__":
         related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
 
         for recipe in related_recipes:
-            recipe.save()
+                recipe.save()
