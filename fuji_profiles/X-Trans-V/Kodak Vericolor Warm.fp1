@@ -16,8 +16,8 @@
         <ImageSize>L3x2</ImageSize>
         <ImageQuality>Normal</ImageQuality>
         <ExposureBias>0.0</ExposureBias>
-        <DynamicRange></DynamicRange>
-        <WideDRange>100</WideDRange>
+        <DynamicRange>100</DynamicRange>
+        <WideDRange></WideDRange>
         <FilmSimulation>NostalgicNEGA</FilmSimulation>
         <BlackImageTone></BlackImageTone>
         <MonochromaticColor_RG></MonochromaticColor_RG>
@@ -31,11 +31,11 @@
         <WBShiftR>8</WBShiftR>
         <WBShiftB>-9</WBShiftB>
         <WBColorTemp>3000K</WBColorTemp>
-        <HighlightTone>-2.0</HighlightTone>
-        <ShadowTone>-1.0</ShadowTone>
-        <Color>+2</Color>
-        <Sharpness>-2.0</Sharpness>
-        <NoisReduction>-4.0</NoisReduction>
+        <HighlightTone>-2</HighlightTone>
+        <ShadowTone>-1</ShadowTone>
+        <Color>2</Color>
+        <Sharpness>-2</Sharpness>
+        <NoisReduction>-4</NoisReduction>
         <Clarity>-2</Clarity>
         <LensModulationOpt>ON</LensModulationOpt>
         <ColorSpace>sRGB</ColorSpace>
