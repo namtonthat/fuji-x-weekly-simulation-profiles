@@ -155,7 +155,7 @@ class FujiRecipeLink:
 
     recipe_url_pattern: str = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*recipe/$"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.name = self.clean_name(self.name)
 
     def is_valid_recipe_link(self) -> bool:
@@ -192,8 +192,10 @@ class FujiRecipeLink:
             return profile_parser_instance.create_fuji_profile()
         except RequestException:
             logger.exception(f"Error fetching URL {self.url}")
+            return None
         except Exception:
             logger.exception(f"Error processing profile for {self.url}")
+            return None
 
 
 @dataclass

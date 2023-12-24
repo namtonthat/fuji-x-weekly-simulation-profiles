@@ -32,7 +32,7 @@ COMPATIBILITY_MAPPING = {
 
 # Value error subclasses
 class TagValidationError(ValueError):
-    def __init__(self, tag, attr=None):
+    def __init__(self, tag: str, attr: str | None = None) -> None:
         if attr:
             super().__init__(f"Missing or empty attribute '{attr}' in '{tag}'.")
         else:
@@ -40,19 +40,25 @@ class TagValidationError(ValueError):
 
 
 class InvalidSelectionError(ValueError):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Invalid selection")
 
 
 class NoValidFileError(ValueError):
-    def __init__(self, file_extension):
+    def __init__(self, file_extension: str) -> None:
         super().__init__(f"No valid {file_extension} file found in the destination folder.")
+
+
+@dataclass
+class TagData:
+    attribute: ET._Attrib
+    text: str
 
 
 @dataclass
 class FP1File:
     source_file_path: str
-    destination_file_path: str = None
+    destination_file_path: str = ""
     xml_tree: ET._ElementTree = field(init=False)
     tags_to_extract: list = field(
         default_factory=lambda: [
@@ -69,31 +75,34 @@ class FP1File:
         ]
     )
 
-    def __post_init__(self):
-        self.destination_file_path = self.destination_file_path or self.source_file_path
+    def __post_init__(self) -> None:
+        self.destination_file_path = (
+            self.destination_file_path if self.destination_file_path != "" else self.source_file_path
+        )
         self.xml_tree = self._parse_xml()
 
-    def _parse_xml(self):
+    def _parse_xml(self) -> ET._ElementTree:
         parser = ET.XMLParser(remove_blank_text=True)
         with open(self.source_file_path, encoding="utf-8") as file:
             return ET.parse(file, parser)
 
-    def extract_tags(self):
+    def extract_tags(self) -> dict:
         root = self.xml_tree.getroot()
-        extracted_tags = {}
+        extracted_tags: dict[str, TagData] = {}
         for tag in self.tags_to_extract:
             if tag == "ConversionProfile" or tag == "PropertyGroup":
                 element = root if tag == "ConversionProfile" else root.find(f".//{tag}")
                 if element is not None:
-                    extracted_tags[tag] = element.attrib
-            else:
-                element = root.find(f".//{tag}")
-                if element is not None and element.text:
-                    extracted_tags[tag] = element.text.strip()
+                    extracted_tags[tag] = TagData(
+                        attribute=element.attrib, text=element.text.strip() if element.text else ""
+                    )
+
+        # Validate extracted tags prior to applying
+        self._validate_extracted_tags(extracted_tags)
 
         return extracted_tags
 
-    def validate_extracted_tags(self, extracted_tags):
+    def _validate_extracted_tags(self, extracted_tags: dict) -> None:
         required_attrs = {
             "ConversionProfile": ["application", "version"],
             "PropertyGroup": ["device", "version"],
@@ -107,7 +116,7 @@ class FP1File:
                 if attr not in extracted_tags[tag] or not extracted_tags[tag][attr]:
                     raise TagValidationError(tag, attr)
 
-    def apply_tags(self, master_tags):
+    def apply_tags(self, master_tags: dict) -> None:
         root = self.xml_tree.getroot()
 
         for tag, value in master_tags.items():
@@ -129,7 +138,7 @@ class FP1File:
         # After modifying the tree, update xml_tree
         self.xml_tree = ET.ElementTree(root)
 
-    def save(self):
+    def save(self) -> None:
         with open(self.destination_file_path, "wb") as file:
             self.xml_tree.write(file, pretty_print=True, xml_declaration=True, encoding="UTF-8")
             console.print(f"Saving {self.destination_file_path}", style="green")
@@ -139,13 +148,13 @@ class FP1File:
 class FP1TemplateFiles:
     source_directory: str
     destination_directory: str
-    template_files: list[FP1File] = None
+    template_files: list[FP1File] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.template_files = self._generate_valid_files()
         console.print(f"Found {self.total_number} valid {FUJI_EXTENSION} files found")
 
-    def _generate_valid_files(self):
+    def _generate_valid_files(self) -> list[FP1File]:
         valid_files = []
         for file_name in os.listdir(self.source_directory):
             if file_name.upper().endswith(FUJI_EXTENSION):
@@ -164,7 +173,7 @@ class FP1TemplateFiles:
         return len(self.template_files)
 
 
-def list_folders_with_subfolders(base_path):
+def list_folders_with_subfolders(base_path: str) -> dict:
     folder_dict = {}
     for item in os.listdir(base_path):
         item_path = os.path.join(base_path, item)
@@ -175,7 +184,7 @@ def list_folders_with_subfolders(base_path):
     return sorted_dict
 
 
-def select_folder(folder_dict):
+def select_folder(folder_dict: dict) -> str:
     options = []
     for folder, subfolders in folder_dict.items():
         if subfolders:
@@ -189,13 +198,13 @@ def select_folder(folder_dict):
         console.print(f"{i + 1}: {option}", style="yellow")
 
     choice = Prompt.ask("Select a folder by number", choices=[str(i + 1) for i in range(len(options))])
-    choice = int(choice) - 1
-    if choice < 0 or choice >= len(options):
+    int_choice = int(choice) - 1
+    if int_choice < 0 or int_choice >= len(options):
         raise InvalidSelectionError()
-    return options[choice]
+    return options[int_choice]
 
 
-def find_valid_fp1_file(directory):
+def find_valid_fp1_file(directory: str) -> FP1File | None:
     for file_name in os.listdir(directory):
         if file_name.endswith(FUJI_EXTENSION):
             file_path = os.path.join(directory, file_name)
@@ -220,8 +229,8 @@ def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
     """
     normalized_sensor_name = normalize_sensor_name(selected_sensor)
     selected_sensor_enum = FujiSensor[normalized_sensor_name]
-    compatiable_camera_models = COMPATIBILITY_MAPPING.get(selected_sensor_enum)
-    camera_model = destination_path.split("/")[-1]
+    compatiable_camera_models: list[str] = COMPATIBILITY_MAPPING.get(selected_sensor_enum, [])
+    camera_model: str = destination_path.split("/")[-1]
 
     try:
         compatiable_sensor_type = camera_model in compatiable_camera_models
@@ -239,7 +248,8 @@ def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
     return True
 
 
-def main():
+if __name__ == "__main__":
+    console.print("[bold yellow]Starting the FP1 processing script...[/bold yellow]")
     current_dir = os.getcwd()
     fuji_profiles_dir = os.path.join(current_dir, "fuji_profiles")
 
@@ -271,8 +281,3 @@ def main():
         fp1_file.save()
 
     logging.info("Files copied successfully.")
-
-
-if __name__ == "__main__":
-    console.print("[bold yellow]Starting the FP1 processing script...[/bold yellow]")
-    main()
