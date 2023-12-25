@@ -200,6 +200,8 @@ class FujiRecipeLink:
 
 @dataclass
 class FujiRecipe:
+    "Generates a Fuji recipe with its related sensor type from a FujiRecipeLink"
+
     sensor: FujiSensor
     link: FujiRecipeLink
 
@@ -220,6 +222,10 @@ class FujiRecipe:
         return template
 
     @property
+    def fp1_file_exists(self) -> bool:
+        return os.path.exists(self.output_file_path)
+
+    @property
     def filled_template(self) -> str:
         "Returns a filled Jinja2 template as a string"
         initial_filled_template = self.jinja2_template.render(self.link.__dict__)
@@ -234,30 +240,35 @@ class FujiRecipe:
             logger.warning(f"Failed to get profile for {self.link.url}")
             return {}
 
-    def save(self) -> None:
+    def save(self) -> bool:
+        "Saves the profile to a file"
+        fuji_profile = self.as_dict()
+        if not fuji_profile:
+            return False
+
         try:
-            fuji_profile = self.as_dict()
+            output = self.filled_template
+            # Create the directory if it doesn't exist
+            directory_path = os.path.dirname(self.output_file_path)
+            os.makedirs(directory_path, exist_ok=True)
+            logger.info('Saving recipe "%s"', self.link.name)
 
-            if fuji_profile:
-                output = self.filled_template
-                # Create the directory if it doesn't exist
-                directory_path = os.path.dirname(self.output_file_path)
-                os.makedirs(directory_path, exist_ok=True)
-                logger.info('Saving recipe "%s"', self.link.name)
-
-                with open(self.output_file_path, "w") as f:
-                    f.write(output)
-                logger.info(f"Profile saved successfully to {self.output_file_path}")
+            with open(self.output_file_path, "w") as f:
+                f.write(output)
+            logger.info(f"Profile saved successfully to {self.output_file_path}")
 
         except Exception:
-            logger.exception(f"Failed to save profile for {self.link.url}")
+            logger.warning(f"Failed to save profile for {self.link.url}")
+            return False
+        else:
+            return True
 
 
 @dataclass
 class FujiRecipes:
-    sensor: FujiSensor  # Assuming FujiSensor is defined somewhere
+    sensor: FujiSensor
     base_sensor_url: str
-    related_recipes: list[FujiRecipe]  # Assuming FujiRecipe is defined somewhere
+    related_recipes: list[FujiRecipe]
 
     @staticmethod
     def soup_representation(url: str) -> BeautifulSoup:
@@ -316,11 +327,12 @@ TIMEOUT_SECONDS = 10
 
 
 if __name__ == "__main__":
-    sensor_recipes: dict = {}
     for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
         logger.info("Pulling recipes for sensor %s", sensor)
         related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
 
         for recipe in related_recipes:
-            # if recipe.link.name == "1976 Kodak":
+            if recipe.fp1_file_exists:
+                logger.info("Recipe %s already exists, skipping...", recipe.link.name)
+                continue
             recipe.save()
