@@ -11,16 +11,12 @@ from rich.prompt import Prompt
 from scrape.models import FujiSensor
 
 # Global variable
-BASE_PATH = os.path.expanduser(
-    "~/Library/Application Support/com.fujifilm.denji/X RAW STUDIO"
-)
+BASE_PATH = os.path.expanduser("~/Library/Application Support/com.fujifilm.denji/X RAW STUDIO")
 FUJI_EXTENSION = ".FP1"
 
 # Setup rich console and logging
 console = Console()
-logging.basicConfig(
-    level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
-)
+logging.basicConfig(level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
 
 COMPATIBILITY_MAPPING = {
     FujiSensor.BAYER: [
@@ -80,14 +76,12 @@ class InvalidSelectionError(ValueError):
 
 class NoValidFileError(ValueError):
     def __init__(self, file_extension: str) -> None:
-        super().__init__(
-            f"No valid {file_extension} file found in the destination folder."
-        )
+        super().__init__(f"No valid {file_extension} file found in the destination folder.")
 
 
 @dataclass
 class TagData:
-    attribute: ET._Attrib  #  type: ignore[no-any-unimported]
+    attribute: ET._Attrib
     text: str
 
 
@@ -95,7 +89,7 @@ class TagData:
 class FP1File:
     source_file_path: str
     destination_file_path: str = ""
-    xml_tree: ET._ElementTree = field(init=False)  #  type: ignore[no-any-unimported]
+    xml_tree: ET._ElementTree = field(init=False)
     tags_to_extract: list = field(
         default_factory=lambda: [
             "ConversionProfile",
@@ -113,13 +107,11 @@ class FP1File:
 
     def __post_init__(self) -> None:
         self.destination_file_path = (
-            self.destination_file_path
-            if self.destination_file_path != ""
-            else self.source_file_path
+            self.destination_file_path if self.destination_file_path != "" else self.source_file_path
         )
         self.xml_tree = self._parse_xml()
 
-    def _parse_xml(self) -> ET._ElementTree:  #  type: ignore[no-any-unimported]
+    def _parse_xml(self) -> ET._ElementTree:
         parser = ET.XMLParser(remove_blank_text=True)
         with open(self.source_file_path, encoding="utf-8") as file:
             return ET.parse(file, parser)
@@ -179,9 +171,7 @@ class FP1File:
 
     def save(self) -> None:
         with open(self.destination_file_path, "wb") as file:
-            self.xml_tree.write(
-                file, pretty_print=True, xml_declaration=True, encoding="UTF-8"
-            )
+            self.xml_tree.write(file, pretty_print=True, xml_declaration=True, encoding="UTF-8")
             console.print(f"Saving {self.destination_file_path}", style="green")
 
 
@@ -202,9 +192,7 @@ class FP1TemplateFiles:
                 valid_files.append(
                     FP1File(
                         source_file_path=os.path.join(self.source_directory, file_name),
-                        destination_file_path=os.path.join(
-                            self.destination_directory, file_name
-                        ),
+                        destination_file_path=os.path.join(self.destination_directory, file_name),
                     )
                 )
             else:
@@ -221,11 +209,7 @@ def list_folders_with_subfolders(base_path: str) -> dict:
     for item in os.listdir(base_path):
         item_path = os.path.join(base_path, item)
         if os.path.isdir(item_path):
-            subfolders = [
-                f
-                for f in os.listdir(item_path)
-                if os.path.isdir(os.path.join(item_path, f))
-            ]
+            subfolders = [f for f in os.listdir(item_path) if os.path.isdir(os.path.join(item_path, f))]
             folder_dict[item] = subfolders
     sorted_dict = OrderedDict(sorted(folder_dict.items()))
     return sorted_dict
@@ -244,9 +228,7 @@ def select_folder(folder_dict: dict) -> str:
     for i, option in enumerate(options):
         console.print(f"{i + 1}: {option}", style="yellow")
 
-    choice = Prompt.ask(
-        "Select a folder by number", choices=[str(i + 1) for i in range(len(options))]
-    )
+    choice = Prompt.ask("Select a folder by number", choices=[str(i + 1) for i in range(len(options))])
     int_choice = int(choice) - 1
     if int_choice < 0 or int_choice >= len(options):
         raise InvalidSelectionError()
@@ -278,9 +260,7 @@ def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
     """
     normalized_sensor_name = normalize_sensor_name(selected_sensor)
     selected_sensor_enum = FujiSensor[normalized_sensor_name]
-    compatiable_camera_models: list[str] = COMPATIBILITY_MAPPING.get(
-        selected_sensor_enum, []
-    )
+    compatiable_camera_models: list[str] = COMPATIBILITY_MAPPING.get(selected_sensor_enum, [])
     camera_model: str = destination_path.split("/")[-1]
 
     try:
@@ -326,9 +306,7 @@ if __name__ == "__main__":
     if not os.path.exists(destination_path):
         os.makedirs(destination_path)
 
-    fuji_template_files = FP1TemplateFiles(
-        source_directory=fuji_profiles_path, destination_directory=destination_path
-    )
+    fuji_template_files = FP1TemplateFiles(source_directory=fuji_profiles_path, destination_directory=destination_path)
     for fp1_file in fuji_template_files.template_files:
         fp1_file.apply_tags(tags_to_apply)
         fp1_file.save()
