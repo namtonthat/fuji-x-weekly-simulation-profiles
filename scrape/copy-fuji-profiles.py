@@ -32,7 +32,7 @@ COMPATIBILITY_MAPPING = {
 
 # Value error subclasses
 class TagValidationError(ValueError):
-    def __init__(self, tag: str, attr: str | None = None) -> None:
+    def __init__(self, tag: str, attr: str = "") -> None:
         if attr:
             super().__init__(f"Missing or empty attribute '{attr}' in '{tag}'.")
         else:
@@ -88,7 +88,7 @@ class FP1File:
 
     def extract_tags(self) -> dict:
         root = self.xml_tree.getroot()
-        extracted_tags: dict[str, TagData] = {}
+        extracted_tags = {}
         for tag in self.tags_to_extract:
             if tag == "ConversionProfile" or tag == "PropertyGroup":
                 element = root if tag == "ConversionProfile" else root.find(f".//{tag}")
