@@ -143,7 +143,7 @@ class FujiSimulationProfile:
     }
 
     @classmethod
-    def create_instance(cls, data: dict):
+    def create_instance(cls, data: dict) -> "FujiSimulationProfile":
         """
         Validate the data and create a FujiSimulationProfile instance
         """
