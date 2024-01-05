@@ -232,7 +232,7 @@ class FujiRecipe:
             logger.warning(f"Failed to get profile for {self.link.url}")
             return {}
 
-    def save(self) -> None:
+    def save(self) -> bool:
         try:
             fuji_profile = self.as_dict()
 
@@ -246,9 +246,12 @@ class FujiRecipe:
                 with open(self.output_file_path, "w") as f:
                     f.write(output)
                 logger.info(f"Profile saved successfully to {self.output_file_path}")
+                return True
 
         except Exception:
             logger.exception(f"Failed to save profile for {self.link.url}")
+
+        return False
 
 
 @dataclass
@@ -299,26 +302,80 @@ class FujiRecipes:
         return related_recipes
 
 
-GLOBAL_SENSOR_LIST = {
+GLOBAL_SENSOR_LIST: dict[FujiSensor, str] = {
     # FujiSensor.BAYER: "https://fujixweekly.com/fujifilm-bayer-recipes/",
     # FujiSensor.EXR_CMOS: "https://fujixweekly.com/fujifilm-exr-cmos-film-simulation-recipes/",
     # FujiSensor.GFX: "https://fujixweekly.com/fujifilm-gfx-recipes/",
     # FujiSensor.X_TRANS_I: "https://fujixweekly.com/fujifilm-x-trans-i-recipes/",
     # FujiSensor.X_TRANS_II: "https://fujixweekly.com/fujifilm-x-trans-ii-recipes/",
-    FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
-    # FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
+    # FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
+    FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
     FujiSensor.X_TRANS_V: "https://fujixweekly.com/fujifilm-x-trans-v-recipes/",
 }
 
 TIMEOUT_SECONDS = 10
 
 
+def get_cached_url_file_path(sensor: FujiSensor) -> str:
+    return f"cached/{sensor.value}.txt"
+
+
+def create_cached_urls_file(sensor: FujiSensor) -> None:
+    file_path = get_cached_url_file_path(sensor)
+
+    # Check if the directory exists, create it if it doesn't
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    with open(file_path, "w") as f:
+        f.write("")
+
+
+def read_cached_urls(sensor: FujiSensor) -> list[str]:
+    "Read the cached URLs from a file"
+    try:
+        file_path = get_cached_url_file_path(sensor)
+        with open(file_path) as f:
+            cached_urls = f.readlines()
+    except FileNotFoundError:
+        return []
+    return cached_urls
+
+
+def write_cached_urls(sensor: FujiSensor, urls: list[str]) -> None:
+    "Write the cached URLs to a file"
+    file_path = get_cached_url_file_path(sensor)
+    if not os.path.exists(file_path):
+        create_cached_urls_file(sensor)
+
+    with open(file_path, "w") as f:
+        f.writelines([url + "\n" for url in urls])
+
+
 if __name__ == "__main__":
     sensor_recipes: dict = {}
+
+    # Iterate through each sensors home page and fetch the recipes
     for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
         logger.info("Pulling recipes for sensor %s", sensor)
         related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
 
+        logger.info("Found %s recipes for sensor %s", len(related_recipes), sensor)
+        sensor_recipes: dict[FujiSensor, list[FujiRecipe]] = {**sensor_recipes, sensor: related_recipes}
+
+    # Iterate through each sensor and save the recipes if they haven't been saved before
+    for sensor_type, related_recipes in sensor_recipes.items():
+        cached_sensor_urls = read_cached_urls(sensor_type)
+
+        new_urls = []
         for recipe in related_recipes:
-            # if recipe.link.name == "1976 Kodak":
-            recipe.save()
+            if recipe.link.url in cached_sensor_urls:
+                logger.info(f"Recipe {recipe.link.name} has previously been saved.")
+                continue
+
+            recipe_saved_successfully = recipe.save()
+            if recipe_saved_successfully:
+                logger.info("Saving to cache, URL: %s ", recipe.link.url)
+                new_urls.append(recipe.link.url)
+
+        new_cached_urls = cached_sensor_urls + new_urls
+        write_cached_urls(sensor_type, new_cached_urls)
