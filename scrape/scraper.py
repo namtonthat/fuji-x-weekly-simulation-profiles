@@ -348,6 +348,7 @@ def write_cached_urls(sensor: FujiSensor, urls: list[str]) -> None:
         create_cached_urls_file(sensor)
 
     with open(file_path, "w") as f:
+        logger.info("Writing %s URLs to %s", len(urls), file_path)
         f.writelines([url + "\n" for url in urls])
 
 
@@ -374,7 +375,6 @@ if __name__ == "__main__":
 
             recipe_saved_successfully = recipe.save()
             if recipe_saved_successfully:
-                logger.info("Saving to cache, URL: %s ", recipe.link.url)
                 new_urls.append(recipe.link.url)
 
         new_cached_urls = cached_sensor_urls + new_urls

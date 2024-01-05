@@ -21,16 +21,22 @@
 ```
 # Setting up your environment
 make install
-
-# Run the script to scrape the fujixweekly.com website
-make scrape
 ```
 
-- To install profiles to your computer:
+### Installing Profiles to FujiX App
 
 ```
 # Copy the files from fuji_profiles into your local environment
 make copy
+```
+
+- This will start the CLI command prompt to copy the `FujiProfiles` over to your computer.
+
+### Reingestion
+
+```
+# To force a reingestion, run
+make clean
 ```
 
 ## Documentation

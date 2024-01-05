@@ -20,6 +20,11 @@ copy: ## Copy profiles to the required folders
 	@echo "📷 Copying fuji_profiles"
 	@poetry run python -m scrape.copy-fuji-profiles
 
+.PHONY: clean
+clean: ## Remove the .cached/ files
+	@echo "🛀 Cleaning previous files"
+	@./scripts/clean.sh
+
 .PHONY: docs-test
 docs-test: ## Test if documentation can be built without warnings or errors
 	@poetry run mkdocs build -s
