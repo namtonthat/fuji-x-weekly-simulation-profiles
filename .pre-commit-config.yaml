@@ -12,7 +12,6 @@ repos:
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: "v0.1.0"
     hooks:
-      # Run the linter.
       - id: ruff-format
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
