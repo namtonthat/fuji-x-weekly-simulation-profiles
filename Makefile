@@ -11,10 +11,6 @@ scrape: ## Scrape the data from the Fuji X Weekly website
 	@echo "📷 Scraping data from Fuji X Weekly"
 	@poetry run python -m scrape.scraper
 
-.PHONY: test
-test: ## Test the code with pytest
-	@./scripts/test.sh
-
 .PHONY: copy
 copy: ## Copy profiles to the required folders
 	@echo "📷 Copying fuji_profiles"

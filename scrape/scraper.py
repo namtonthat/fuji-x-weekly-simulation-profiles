@@ -155,7 +155,7 @@ class FujiRecipeLink:
 
     recipe_url_pattern: str = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*recipe/$"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.name = self.clean_name(self.name)
 
     def is_valid_recipe_link(self) -> bool:
@@ -192,8 +192,10 @@ class FujiRecipeLink:
             return profile_parser_instance.create_fuji_profile()
         except RequestException:
             logger.exception(f"Error fetching URL {self.url}")
+            return None
         except Exception:
             logger.exception(f"Error processing profile for {self.url}")
+            return None
 
 
 @dataclass
@@ -353,7 +355,7 @@ def write_cached_urls(sensor: FujiSensor, urls: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    sensor_recipes: dict = {}
+    sensor_recipes: dict[FujiSensor, list[FujiRecipe]] = {}
 
     # Iterate through each sensors home page and fetch the recipes
     for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
@@ -361,7 +363,10 @@ if __name__ == "__main__":
         related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
 
         logger.info("Found %s recipes for sensor %s", len(related_recipes), sensor)
-        sensor_recipes: dict[FujiSensor, list[FujiRecipe]] = {**sensor_recipes, sensor: related_recipes}
+
+        # Add the sensor and its recipes to the dictionary
+        current_sensor = {sensor: related_recipes}
+        sensor_recipes = {**sensor_recipes, **current_sensor}
 
     # Iterate through each sensor and save the recipes if they haven't been saved before
     for sensor_type, related_recipes in sensor_recipes.items():
