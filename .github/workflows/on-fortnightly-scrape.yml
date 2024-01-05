@@ -21,3 +21,6 @@ jobs:
 
       - name: Scrape fujixweekly.com website
         run: make scrape
+
+      - name: Commit files
+        uses: stefanzweifel/git-auto-commit-action@v4

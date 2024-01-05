@@ -7,14 +7,13 @@
 
 **Repo Status**
 
-[![Build status](https://img.shields.io/github/actions/workflow/status/namtonthat/fuji-x-weekly-simulation-profiles/main.yml?branch=main)](https://github.com/namtonthat/fuji-x-weekly-simulation-profiles/actions/workflows/main.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/namtonthat/fuji-x-weekly-simulation-profiles/branch/main/graph/badge.svg)](https://codecov.io/gh/namtonthat/fuji-x-weekly-simulation-profiles)
+[![fortnightly scrape status](https://img.shields.io/github/actions/workflow/status/namtonthat/fuji-x-weekly-simulation-profiles/on-fortnightly-scrape.yml?branch=main)](https://github.com/namtonthat/fuji-x-weekly-simulation-profiles/actions/workflows/on-fornightly-scrape.yml?query=branch%3Amain)
 [![License](https://img.shields.io/github/license/namtonthat/fuji-x-weekly-simulation-profiles)](https://img.shields.io/github/license/namtonthat/fuji-x-weekly-simulation-profiles)
 
 ### Purpose
 
-- Scrape the [www.fujixweekly.com](https://www.fujixweekly.com) for `Fuji X` simulation profiles
-- Copy the `.FP1` files over to `X Raw Studio` app with ease using Python
+- Auto scraping the [www.fujixweekly.com](https://www.fujixweekly.com) for `Fuji X` simulation profiles every fornight
+- Copy the `.FP1` files over to `X Raw Studio` app with ease using CLI and Python
 
 ### Getting Started
 
@@ -23,7 +22,7 @@
 make install
 ```
 
-### Installing Profiles to FujiX App
+### Installing Profiles to `FujiX` App
 
 ```
 # Copy the files from fuji_profiles into your local environment
@@ -34,18 +33,12 @@ make copy
 
 ### Reingestion
 
+In the case that the profiles aren't being parsed correctly, you can force a reingestion by running `make clean` which removes the `./cached` profiles. This is automated to run every fortnight.
+
 ```
 # To force a reingestion, run
 make clean
 ```
-
-## Documentation
-
-<https://namtonthat.github.io/fuji-x-weekly-simulation-profiles/>
-
-## Getting started with your project
-
-To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/codecov/).
 
 ## Motivations
 
