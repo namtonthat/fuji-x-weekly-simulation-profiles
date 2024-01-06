@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from collections.abc import Generator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import requests
 from bs4 import BeautifulSoup
@@ -268,7 +268,24 @@ class FujiRecipe:
 class FujiRecipes:
     sensor: FujiSensor
     base_sensor_url: str
-    related_recipes: list[FujiRecipe]
+    cached_urls: list[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        self.load_cache()
+
+    def load_cache(self):
+        cache_file_path = f"urls/{self.sensor.value}.txt"
+
+        try:
+            with open(cache_file_path) as file:
+                self.cached_urls = [line.strip() for line in file.readlines()]
+        except FileNotFoundError:
+            # If the file doesn't exist, no action needed; it will be created when needed
+            pass
+
+    @classmethod
+    def is_recipe_cached(cls, url: str) -> bool:
+        return url in cls.cached_urls
 
     @staticmethod
     def soup_representation(url: str) -> BeautifulSoup:
@@ -283,11 +300,10 @@ class FujiRecipes:
         return len(recipe_links)
 
     @classmethod
-    def fetch_recipes(cls, sensor: FujiSensor, sensor_url: str) -> list[FujiRecipe]:
+    def fetch_recipes(cls, sensor: FujiSensor, sensor_url: str) -> Generator[FujiRecipe, None, None]:
         soup = cls.soup_representation(sensor_url)
         all_links_for_sensor = soup.find_all("a")
 
-        related_recipes = []
         collect_recipes = False
 
         for link in all_links_for_sensor:
@@ -299,17 +315,16 @@ class FujiRecipes:
             elif "twitter" in href:
                 break  # Stop collecting recipes
 
-            if collect_recipes and link_object.is_valid_recipe_link():
+            if collect_recipes and link_object.is_valid_recipe_link() and not cls.is_recipe_cached(url=href):
                 sensor_recipe = FujiRecipe(sensor=sensor, link=link_object)
                 if sensor_recipe in related_recipes:
                     logger.warning(f"Recipe {sensor_recipe.link.name} already fetched.")
                 else:
-                    related_recipes.append(sensor_recipe)
+                    yield sensor_recipe
 
-        # Validation Step
-        if len(related_recipes) > cls.max_recipes(sensor_url):
-            logger.warning(f"More recipes fetched ({len(related_recipes)}) than the expected maximum.")
-        return related_recipes
+    @property
+    def related_recipes(self) -> list[FujiRecipe]:
+        return list(self.fetch_recipes(self.sensor, self.base_sensor_url))
 
 
 GLOBAL_SENSOR_LIST = {
@@ -329,7 +344,7 @@ TIMEOUT_SECONDS = 10
 if __name__ == "__main__":
     for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
         logger.info("Pulling recipes for sensor %s", sensor)
-        related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
+        related_recipes = FujiRecipes(sensor=sensor, base_sensor_url=sensor_url).related_recipes
 
         for recipe in related_recipes:
             if recipe.fp1_file_exists:
