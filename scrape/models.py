@@ -283,9 +283,7 @@ class KeyStandardizer:
 
         try:
             grain_effect = FujiEffect[grain_effect_values[0]]  # Convert string to FujiEffect enum member
-            grain_effect_size = (
-                GrainEffectSize[grain_effect_values[1]] if len(grain_effect_values) > 1 else None
-            )  # Convert string to GrainEffectSize enum member or None
+            grain_effect_size = GrainEffectSize[grain_effect_values[1]] if len(grain_effect_values) > 1 else None  # Convert string to GrainEffectSize enum member or None
 
             return GrainEffect(grain_effect=grain_effect, grain_effect_size=grain_effect_size)
         except (IndexError, KeyError):
