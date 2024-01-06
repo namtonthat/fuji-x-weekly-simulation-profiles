@@ -13,7 +13,8 @@
 ### Purpose
 
 - Auto scraping the [www.fujixweekly.com](https://www.fujixweekly.com) for `Fuji X` simulation profiles every fornight
-- Copy the `.FP1` files over to `X Raw Studio` app with ease using CLI and Python
+- A simple CLI tool to copy the `.FP1` files over to `X Raw Studio` app with ease using CLI and Python (works for mac OS).
+  ![CLI screenshot](media/cli-screenshot.png)
 
 ### Getting Started
 
@@ -27,14 +28,16 @@ make install
 1. Make a blank profile; this is so that the serial number is registered and can be copied over with the template `.fp1` file.
 
    a. Open `Fujifilm X Raw Studio` App.
-   b. Create a profile
+   b. Create a base profile named `_Base Profile` so it appears first. (It doesn't have to, I've just done it for convenience)
 
-2.
+2. Run
 
 ```
 # Copy the files from fuji_profiles into your local environment
 make copy
 ```
+
+![CLI in action](media/cli-full.gif)
 
 - This will start the CLI command prompt to copy the `FujiProfiles` over to your computer.
 
