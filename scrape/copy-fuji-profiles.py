@@ -119,8 +119,6 @@ class FP1File:
                 element = root.find(f".//{tag}")
                 extracted_tags[tag] = element.text.strip() if element is not None and element.text else ""
 
-        logging.info(f"Extracted tags: {extracted_tags}")
-
         return extracted_tags
 
     @property
@@ -245,7 +243,7 @@ def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
     normalized_sensor_name = normalize_sensor_name(selected_sensor)
     selected_sensor_enum = FujiSensor[normalized_sensor_name]
     compatiable_camera_models: list[str] = COMPATIBILITY_MAPPING.get(selected_sensor_enum, [])
-    camera_model: str = destination_path.split("/")[0]
+    camera_model: str = destination_path.split("/")[-2]
 
     try:
         compatiable_sensor_type = camera_model in compatiable_camera_models
