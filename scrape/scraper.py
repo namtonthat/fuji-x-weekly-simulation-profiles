@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from collections.abc import Generator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import requests
 from bs4 import BeautifulSoup
@@ -10,7 +10,13 @@ from bs4.element import Tag
 from jinja2 import Environment, FileSystemLoader, Template
 from requests.exceptions import RequestException
 
-from scrape.models import FilmSimulation, FujiSensor, FujiSimulationProfile, KeyStandardizer, clean_camera_profile_name
+from scrape.models import (
+    FilmSimulation,
+    FujiSensor,
+    FujiSimulationProfile,
+    KeyStandardizer,
+    clean_camera_profile_name,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -200,8 +206,6 @@ class FujiRecipeLink:
 
 @dataclass
 class FujiRecipe:
-    "Generates a Fuji recipe with its related sensor type from a FujiRecipeLink"
-
     sensor: FujiSensor
     link: FujiRecipeLink
 
@@ -222,10 +226,6 @@ class FujiRecipe:
         return template
 
     @property
-    def fp1_file_exists(self) -> bool:
-        return os.path.exists(self.output_file_path)
-
-    @property
     def filled_template(self) -> str:
         "Returns a filled Jinja2 template as a string"
         initial_filled_template = self.jinja2_template.render(self.link.__dict__)
@@ -241,51 +241,32 @@ class FujiRecipe:
             return {}
 
     def save(self) -> bool:
-        "Saves the profile to a file"
-        fuji_profile = self.as_dict()
-        if not fuji_profile:
-            return False
-
         try:
-            output = self.filled_template
-            # Create the directory if it doesn't exist
-            directory_path = os.path.dirname(self.output_file_path)
-            os.makedirs(directory_path, exist_ok=True)
-            logger.info('Saving recipe "%s"', self.link.name)
+            fuji_profile = self.as_dict()
 
-            with open(self.output_file_path, "w") as f:
-                f.write(output)
-            logger.info(f"Profile saved successfully to {self.output_file_path}")
+            if fuji_profile:
+                output = self.filled_template
+                # Create the directory if it doesn't exist
+                directory_path = os.path.dirname(self.output_file_path)
+                os.makedirs(directory_path, exist_ok=True)
+                logger.info('Saving recipe "%s"', self.link.name)
+
+                with open(self.output_file_path, "w") as f:
+                    f.write(output)
+                logger.info(f"Profile saved successfully to {self.output_file_path}")
+                return True
 
         except Exception:
-            logger.warning(f"Failed to save profile for {self.link.url}")
-            return False
-        else:
-            return True
+            logger.exception(f"Failed to save profile for {self.link.url}")
+
+        return False
 
 
 @dataclass
 class FujiRecipes:
     sensor: FujiSensor
     base_sensor_url: str
-    cached_urls: list[str] = field(default_factory=list)
-
-    def __post_init__(self):
-        self.load_cache()
-
-    def load_cache(self):
-        cache_file_path = f"urls/{self.sensor.value}.txt"
-
-        try:
-            with open(cache_file_path) as file:
-                self.cached_urls = [line.strip() for line in file.readlines()]
-        except FileNotFoundError:
-            # If the file doesn't exist, no action needed; it will be created when needed
-            pass
-
-    @classmethod
-    def is_recipe_cached(cls, url: str) -> bool:
-        return url in cls.cached_urls
+    related_recipes: list[FujiRecipe]
 
     @staticmethod
     def soup_representation(url: str) -> BeautifulSoup:
@@ -300,10 +281,11 @@ class FujiRecipes:
         return len(recipe_links)
 
     @classmethod
-    def fetch_recipes(cls, sensor: FujiSensor, sensor_url: str) -> Generator[FujiRecipe, None, None]:
+    def fetch_recipes(cls, sensor: FujiSensor, sensor_url: str) -> list[FujiRecipe]:
         soup = cls.soup_representation(sensor_url)
         all_links_for_sensor = soup.find_all("a")
 
+        related_recipes = []
         collect_recipes = False
 
         for link in all_links_for_sensor:
@@ -315,39 +297,96 @@ class FujiRecipes:
             elif "twitter" in href:
                 break  # Stop collecting recipes
 
-            if collect_recipes and link_object.is_valid_recipe_link() and not cls.is_recipe_cached(url=href):
+            if collect_recipes and link_object.is_valid_recipe_link():
                 sensor_recipe = FujiRecipe(sensor=sensor, link=link_object)
                 if sensor_recipe in related_recipes:
                     logger.warning(f"Recipe {sensor_recipe.link.name} already fetched.")
                 else:
-                    yield sensor_recipe
+                    related_recipes.append(sensor_recipe)
 
-    @property
-    def related_recipes(self) -> list[FujiRecipe]:
-        return list(self.fetch_recipes(self.sensor, self.base_sensor_url))
+        # Validation Step
+        if len(related_recipes) > cls.max_recipes(sensor_url):
+            logger.warning(f"More recipes fetched ({len(related_recipes)}) than the expected maximum.")
+        return related_recipes
 
 
-GLOBAL_SENSOR_LIST = {
+GLOBAL_SENSOR_LIST: dict[FujiSensor, str] = {
     # FujiSensor.BAYER: "https://fujixweekly.com/fujifilm-bayer-recipes/",
     # FujiSensor.EXR_CMOS: "https://fujixweekly.com/fujifilm-exr-cmos-film-simulation-recipes/",
     # FujiSensor.GFX: "https://fujixweekly.com/fujifilm-gfx-recipes/",
     # FujiSensor.X_TRANS_I: "https://fujixweekly.com/fujifilm-x-trans-i-recipes/",
     # FujiSensor.X_TRANS_II: "https://fujixweekly.com/fujifilm-x-trans-ii-recipes/",
-    FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
-    # FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
+    # FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
+    FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
     FujiSensor.X_TRANS_V: "https://fujixweekly.com/fujifilm-x-trans-v-recipes/",
 }
 
 TIMEOUT_SECONDS = 10
 
 
+def get_cached_url_file_path(sensor: FujiSensor) -> str:
+    return f"cached/{sensor.value}.txt"
+
+
+def create_cached_urls_file(sensor: FujiSensor) -> None:
+    file_path = get_cached_url_file_path(sensor)
+
+    # Check if the directory exists, create it if it doesn't
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    with open(file_path, "w") as f:
+        f.write("")
+
+
+def read_cached_urls(sensor: FujiSensor) -> list[str]:
+    "Read the cached URLs from a file"
+    try:
+        file_path = get_cached_url_file_path(sensor)
+        with open(file_path) as f:
+            cached_urls = f.readlines()
+    except FileNotFoundError:
+        return []
+    return cached_urls
+
+
+def write_cached_urls(sensor: FujiSensor, urls: list[str]) -> None:
+    "Write the cached URLs to a file"
+    file_path = get_cached_url_file_path(sensor)
+    if not os.path.exists(file_path):
+        create_cached_urls_file(sensor)
+
+    with open(file_path, "w") as f:
+        logger.info("Writing %s URLs to %s", len(urls), file_path)
+        f.writelines([url + "\n" for url in urls])
+
+
 if __name__ == "__main__":
+    sensor_recipes: dict[FujiSensor, list[FujiRecipe]] = {}
+
+    # Iterate through each sensors home page and fetch the recipes
     for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
         logger.info("Pulling recipes for sensor %s", sensor)
-        related_recipes = FujiRecipes(sensor=sensor, base_sensor_url=sensor_url).related_recipes
+        related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
 
+        logger.info("Found %s recipes for sensor %s", len(related_recipes), sensor)
+
+        # Add the sensor and its recipes to the dictionary
+        current_sensor = {sensor: related_recipes}
+        sensor_recipes = {**sensor_recipes, **current_sensor}
+
+    # Iterate through each sensor and save the recipes if they haven't been saved before
+    for sensor_type, related_recipes in sensor_recipes.items():
+        cached_sensor_urls = read_cached_urls(sensor_type)
+
+        new_urls = []
         for recipe in related_recipes:
-            if recipe.fp1_file_exists:
-                logger.info("Recipe %s already exists, skipping...", recipe.link.name)
+            if recipe.link.url in cached_sensor_urls:
+                logger.info(f"Recipe {recipe.link.name} has previously been saved.")
                 continue
-            recipe.save()
+
+            recipe_saved_successfully = recipe.save()
+            if recipe_saved_successfully:
+                new_urls.append(recipe.link.url)
+
+        new_cached_urls = cached_sensor_urls + new_urls
+        write_cached_urls(sensor_type, new_cached_urls)

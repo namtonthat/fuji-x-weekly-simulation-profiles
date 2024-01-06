@@ -11,14 +11,15 @@ scrape: ## Scrape the data from the Fuji X Weekly website
 	@echo "📷 Scraping data from Fuji X Weekly"
 	@poetry run python -m scrape.scraper
 
-.PHONY: test
-test: ## Test the code with pytest
-	@./scripts/test.sh
-
 .PHONY: copy
 copy: ## Copy profiles to the required folders
 	@echo "📷 Copying fuji_profiles"
 	@poetry run python -m scrape.copy-fuji-profiles
+
+.PHONY: clean
+clean: ## Remove the .cached/ files
+	@echo "🛀 Cleaning previous files"
+	@./scripts/clean.sh
 
 .PHONY: docs-test
 docs-test: ## Test if documentation can be built without warnings or errors

@@ -1,0 +1,23 @@
+name: Fortnightly Scrape
+
+on:
+  schedule: # run every two weeks
+    - cron: "0 0 1,15 * *"
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-poetry-env
+
+      - name: Scrape fujixweekly.com website
+        run: make scrape

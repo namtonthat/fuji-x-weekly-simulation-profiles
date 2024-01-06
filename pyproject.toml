@@ -25,7 +25,6 @@ mypy = "^1.5.1"
 pre-commit = "^3.4.0"
 tox = "^4.11.1"
 jupyter = "^1.0.0"
-jupyter-server = "2.11.2"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.4.2"
