@@ -80,12 +80,6 @@ class NoValidFileError(ValueError):
 
 
 @dataclass
-class TagData:
-    attribute: ET._Attrib
-    text: str
-
-
-@dataclass
 class FP1File:
     source_file_path: str
     destination_file_path: str = ""
@@ -106,9 +100,7 @@ class FP1File:
     )
 
     def __post_init__(self) -> None:
-        self.destination_file_path = (
-            self.destination_file_path if self.destination_file_path != "" else self.source_file_path
-        )
+        self.destination_file_path = self.destination_file_path if self.destination_file_path != "" else self.source_file_path
         self.xml_tree = self._parse_xml()
 
     def _parse_xml(self) -> ET._ElementTree:
@@ -120,32 +112,23 @@ class FP1File:
         root = self.xml_tree.getroot()
         extracted_tags = {}
         for tag in self.tags_to_extract:
-            if tag == "ConversionProfile" or tag == "PropertyGroup":
+            if tag in self.required_attrs:
                 element = root if tag == "ConversionProfile" else root.find(f".//{tag}")
-                if element is not None:
-                    extracted_tags[tag] = TagData(
-                        attribute=element.attrib,
-                        text=element.text.strip() if element.text else "",
-                    )
+                extracted_tags[tag] = element.attrib if element is not None else {}
+            else:
+                element = root.find(f".//{tag}")
+                extracted_tags[tag] = element.text.strip() if element is not None and element.text else ""
 
-        # Validate extracted tags prior to applying
-        self._validate_extracted_tags(extracted_tags)
+        logging.info(f"Extracted tags: {extracted_tags}")
 
         return extracted_tags
 
-    def _validate_extracted_tags(self, extracted_tags: dict) -> None:
-        required_attrs = {
+    @property
+    def required_attrs(self) -> dict:
+        return {
             "ConversionProfile": ["application", "version"],
             "PropertyGroup": ["device", "version"],
         }
-
-        for tag, attrs in required_attrs.items():
-            if tag not in extracted_tags or not isinstance(extracted_tags[tag], dict):
-                raise TagValidationError(tag)
-
-            for attr in attrs:
-                if attr not in extracted_tags[tag] or not extracted_tags[tag][attr]:
-                    raise TagValidationError(tag, attr)
 
     def apply_tags(self, master_tags: dict) -> None:
         root = self.xml_tree.getroot()
@@ -154,6 +137,7 @@ class FP1File:
             if tag in ["ConversionProfile", "PropertyGroup"]:
                 # Apply attributes to special tags
                 element = root if tag == "ConversionProfile" else root.find(f".//{tag}")
+
                 if element is not None:
                     for attr, attr_value in value.items():
                         # Skip label attribute
@@ -261,7 +245,7 @@ def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
     normalized_sensor_name = normalize_sensor_name(selected_sensor)
     selected_sensor_enum = FujiSensor[normalized_sensor_name]
     compatiable_camera_models: list[str] = COMPATIBILITY_MAPPING.get(selected_sensor_enum, [])
-    camera_model: str = destination_path.split("/")[-1]
+    camera_model: str = destination_path.split("/")[0]
 
     try:
         compatiable_sensor_type = camera_model in compatiable_camera_models

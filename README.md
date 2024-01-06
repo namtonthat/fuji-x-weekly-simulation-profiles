@@ -24,6 +24,13 @@ make install
 
 ### Installing Profiles to `FujiX` App
 
+1. Make a blank profile; this is so that the serial number is registered and can be copied over with the template `.fp1` file.
+
+   a. Open `Fujifilm X Raw Studio` App.
+   b. Create a profile
+
+2.
+
 ```
 # Copy the files from fuji_profiles into your local environment
 make copy
