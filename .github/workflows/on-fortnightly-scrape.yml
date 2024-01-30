@@ -1,12 +1,15 @@
-name: Fortnightly Scrape
+name: fortnight-scrape
 
 on:
   schedule: # run every two weeks
     - cron: "0 0 1,15 * *"
 
 jobs:
-  scrape:
+  fujifilm-scrape:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Check out
         uses: actions/checkout@v3
