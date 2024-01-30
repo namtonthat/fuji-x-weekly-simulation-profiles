@@ -28,6 +28,7 @@ make install
 1. Make a blank profile; this is so that the serial number is registered and can be copied over with the template `.fp1` file.
 
    a. Open `Fujifilm X Raw Studio` App.
+
    b. Create a base profile named `_Base Profile` so it appears first. (It doesn't have to, I've just done it for convenience)
 
 2. Run
