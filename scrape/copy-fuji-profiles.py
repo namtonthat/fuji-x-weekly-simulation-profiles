@@ -108,9 +108,9 @@ class FP1File:
         with open(self.source_file_path, encoding="utf-8") as file:
             return ET.parse(file, parser)
 
-    def extract_tags(self) -> dict[str, Union[str, dict[str, str]]]:
+    def extract_tags(self) -> dict[str, str | dict[str, str]]:
         root = self.xml_tree.getroot()
-        extracted_tags: dict[str, Union[str, dict[str, str]]] = {}
+        extracted_tags: dict[str, str | dict[str, str]] = {}
         for tag in self.tags_to_extract:
             if tag in self.required_attrs:
                 element = root if tag == "ConversionProfile" else root.find(f".//{tag}")
