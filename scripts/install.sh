@@ -30,13 +30,9 @@ setup_env() {
 
 # Set up pre-commit hooks only when running locally.
 setup_precommit() {
-  if [ "$GITHUB_ACTIONS" = "true" ]; then
-    echo "Running in GitHub Actions. Skipping pre-commit hooks."
-  else
-    echo "Installing pre-commit hooks..."
-    uv run pre-commit clean
-    uv run pre-commit install
-  fi
+  echo "Installing pre-commit hooks..."
+  uv run pre-commit clean
+  uv run pre-commit install
 }
 
 # Main execution flow.
