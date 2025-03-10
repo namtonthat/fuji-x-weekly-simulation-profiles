@@ -33,7 +33,7 @@ jobs:
       matrix:
         env:
           - "3.13"
-        python-version: ["${{ env.PYTHON_VERSION }}"]
+        python-version: ["${{ matrix.env }}"]
     steps:
       - name: Check out
         uses: actions/checkout@v3
