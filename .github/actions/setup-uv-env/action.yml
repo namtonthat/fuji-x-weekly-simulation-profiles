@@ -20,5 +20,12 @@ runs:
         if-use-cache: ${{ startsWith(matrix.python-version, 'pypy') }}
 
     - name: Install dependencies
-      run: make install
+      env:
+        PYTHON_VERSION: ${{ inputs.python-version }}
+      run: |
+        pip install uv
+        uv venv --python "$PYTHON_VERSION"
+        source .venv/bin/activate
+        uv sync --group docs
+
       shell: bash
