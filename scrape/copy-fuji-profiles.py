@@ -110,7 +110,7 @@ class FP1File:
 
     def extract_tags(self) -> dict:
         root = self.xml_tree.getroot()
-        extracted_tags = {}
+        extracted_tags: dict[str, str] = {}
         for tag in self.tags_to_extract:
             if tag in self.required_attrs:
                 element = root if tag == "ConversionProfile" else root.find(f".//{tag}")

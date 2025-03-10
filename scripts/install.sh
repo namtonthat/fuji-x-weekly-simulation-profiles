@@ -25,7 +25,14 @@ setup_env() {
   echo "🚀 Creating virtual environment using uv"
   uv venv --python "$PYTHON_VERSION"
   source .venv/bin/activate
-  uv sync
+
+  if [ -n "$GROUP_NAME" ]; then
+    echo "Syncing dependencies for group: $GROUP_NAME"
+    uv sync --group "$GROUP_NAME"
+  else
+    echo "Syncing dependencies"
+    uv sync
+  fi
 }
 
 # Set up pre-commit hooks only when running locally.
