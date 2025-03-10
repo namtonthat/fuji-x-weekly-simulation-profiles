@@ -337,7 +337,8 @@ def read_cached_urls(sensor: FujiSensor) -> list[str]:
     try:
         file_path = get_cached_url_file_path(sensor)
         with open(file_path) as f:
-            cached_urls = f.readlines()
+            # Remove the newline character from each line
+            cached_urls = [line.strip() for line in f.readlines()]
     except FileNotFoundError:
         return []
     return cached_urls

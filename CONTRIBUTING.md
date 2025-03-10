@@ -9,7 +9,7 @@ You can contribute in many ways:
 
 ## Report Bugs
 
-Report bugs at https://github.com/namtonthat/fuji-x-weekly-simluation-profiles/issues
+Report bugs at <https://github.com/namtonthat/fuji-x-weekly-simluation-profiles/issues>
 
 If you are reporting a bug, please include:
 
@@ -33,7 +33,7 @@ Cookiecutter PyPackage could always use more documentation, whether as part of t
 
 ## Submit Feedback
 
-The best way to send feedback is to file an issue at https://github.com/namtonthat/fuji-x-weekly-simluation-profiles/issues.
+The best way to send feedback is to file an issue at <https://github.com/namtonthat/fuji-x-weekly-simluation-profiles/issues>.
 
 If you are proposing a new feature:
 
@@ -42,10 +42,10 @@ If you are proposing a new feature:
 - Remember that this is a volunteer-driven project, and that contributions
   are welcome :)
 
-# Get Started!
+# Get Started
 
 Ready to contribute? Here's how to set up `fuji-x-weekly-simluation-profiles` for local development.
-Please note this documentation assumes you already have `poetry` and `Git` installed and ready to go.
+Please note this documentation assumes you already have `uv` and `Git` installed and ready to go.
 
 1. Fork the `fuji-x-weekly-simluation-profiles` repo on GitHub.
 
@@ -62,23 +62,26 @@ git clone git@github.com:YOUR_NAME/fuji-x-weekly-simluation-profiles.git
 cd fuji-x-weekly-simluation-profiles
 ```
 
-If you are using `pyenv`, select a version to use locally. (See installed versions with `pyenv versions`)
+Install `uv` via `pip` or if you already have it via `brew`
 
-```bash
-pyenv local <x.y.z>
+```
+# Install uv via package manager
+brew install uv
+
+# Install within python environment 
+pip install uv
 ```
 
 Then, install and activate the environment with:
 
 ```bash
-poetry install
-poetry shell
+make install
 ```
 
 4. Install pre-commit to run linters/formatters at commit time:
 
 ```bash
-poetry run pre-commit install
+uv run pre-commit install
 ```
 
 5. Create a branch for local development:

@@ -1,8 +1,9 @@
-echo "🚀 Checking Poetry lock file consistency with 'pyproject.toml': Running poetry lock --check"
-poetry check --lock
+#!/bin/bash
+echo "🚀 Checking uv lock file consistency with 'pyproject.toml': Running uv lock --check"
+uv lock --check
 
 echo "🚀 Linting code: Running pre-commit"
-poetry run pre-commit run -a
+uv run pre-commit run -a
 
 echo "🚀 Static type checking: Running mypy"
-poetry run mypy
+uv run mypy
