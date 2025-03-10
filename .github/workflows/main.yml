@@ -33,7 +33,6 @@ jobs:
       matrix:
         env:
           - "3.13"
-        python-version: ["${{ matrix.env }}"]
     steps:
       - name: Check out
         uses: actions/checkout@v3
@@ -41,7 +40,7 @@ jobs:
       - name: Set up python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.env }}
 
       - name: Install uv
         uses: snok/install-uv@v1
@@ -54,7 +53,7 @@ jobs:
       # - name: Test with tox
       #   run: tox
 
-      - name: Upload coverage reports to Codecov using Python ${{ matrix.python-version }}
+      - name: Upload coverage reports to Codecov using Python ${{ matrix.env }}
         uses: codecov/codecov-action@v3
 
   check-docs:
