@@ -23,7 +23,9 @@ jobs:
         uses: ./.github/actions/setup-uv-env
 
       - name: Scrape fujixweekly.com website
-        run: make scrape
+        run: |
+          make install
+          make scrape
 
       - name: Commit files
         uses: stefanzweifel/git-auto-commit-action@v4

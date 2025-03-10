@@ -20,7 +20,3 @@ runs:
       with:
         enable-cache: true
         cache-dependency-glob: "**/pyproject.toml"
-
-    - name: Install dependencies
-      run: make install
-      shell: bash
