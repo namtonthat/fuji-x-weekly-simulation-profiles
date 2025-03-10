@@ -5,7 +5,7 @@ inputs:
   python-version:
     required: false
     description: "The python version to use"
-    default: "3.11.6"
+    default: "3.13.0"
 
 runs:
   using: "composite"
@@ -15,19 +15,10 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
+    - uses: hynek/setup-cached-uv@v2
       with:
-        virtualenvs-in-project: true
-
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('poetry.lock') }}
+        if-use-cache: ${{ startsWith(matrix.python-version, 'pypy') }}
 
     - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root
+      run: make install
       shell: bash
