@@ -108,14 +108,13 @@ class FP1File:
         with open(self.source_file_path, encoding="utf-8") as file:
             return ET.parse(file, parser)
 
-    def extract_tags(self) -> dict[str, str]:
+    def extract_tags(self) -> dict[str, Union[str, dict[str, str]]]:
         root = self.xml_tree.getroot()
-        extracted_tags: dict[str, str] = {}
+        extracted_tags: dict[str, Union[str, dict[str, str]]] = {}
         for tag in self.tags_to_extract:
             if tag in self.required_attrs:
                 element = root if tag == "ConversionProfile" else root.find(f".//{tag}")
-                # Convert the attributes dictionary to a string representation.
-                extracted_tags[tag] = str(element.attrib) if element is not None else ""
+                extracted_tags[tag] = element.attrib if element is not None else {}
             else:
                 element = root.find(f".//{tag}")
                 extracted_tags[tag] = element.text.strip() if element is not None and element.text else ""
