@@ -1,8 +1,5 @@
 name: Main
 
-env:
-  PYTHON_VERSION: 3.13.0
-
 on:
   push:
     branches:
@@ -13,6 +10,8 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: 3.13.0
     steps:
       - name: Check out
         uses: actions/checkout@v3
@@ -30,6 +29,8 @@ jobs:
 
   tox:
     runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: 3.13.0
     strategy:
       matrix:
         python-version: ["${{ env.PYTHON_VERSION }}"]
@@ -58,6 +59,8 @@ jobs:
 
   check-docs:
     runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: 3.13.0
     steps:
       - name: Check out
         uses: actions/checkout@v3
