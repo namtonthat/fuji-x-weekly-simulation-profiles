@@ -1,14 +1,16 @@
-## Setup script for local development
-export PYTHON_VERSION=3.11.6
+#!/bin/bash
 
-echo "🚀 Creating virtual environment using pyenv and poetry"
+set -e errexit
+
+## Setup script for local development
+export PYTHON_VERSION=3.13.0
+
+echo "🚀 Creating virtual environment using uv"
 # Install Python
-pyenv install $PYTHON_VERSION
-pyenv virtualenv-delete -f fuji-x-weekly-simulation-profiles-$PYTHON_VERSION
-pyenv virtualenv $PYTHON_VERSION fuji-x-weekly-simulation-profiles-$PYTHON_VERSION
-pyenv local fuji-x-weekly-simulation-profiles-$PYTHON_VERSION
+uv venv --python $PYTHON_VERSION
+source .venv/bin/activate
+uv sync
 
 # Install dependencies
-poetry shell
-poetry run pre-commit install
-poetry install --no-root
+uv run pre-commit clean
+uv run pre-commit install

@@ -1,3 +1,4 @@
+#!/bin/bash
 # remove the cached files
 rm -rf .cached/
 

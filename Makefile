@@ -1,5 +1,5 @@
 .PHONY: install
-install: ## Install the poetry environment and install the pre-commit hooks
+install: ## Install the uv environment and install the pre-commit hooks
 	@./scripts/install.sh
 
 .PHONY: check
@@ -9,12 +9,12 @@ check: ## Run code quality tools.
 .PHONY: scrape
 scrape: ## Scrape the data from the Fuji X Weekly website
 	@echo "📷 Scraping data from Fuji X Weekly"
-	@poetry run python -m scrape.scraper
+	@uv run python -m scrape.scraper
 
 .PHONY: copy
 copy: ## Copy profiles to the required folders
 	@echo "📷 Copying fuji_profiles"
-	@poetry run python -m scrape.copy-fuji-profiles
+	@uv run python -m scrape.copy-fuji-profiles
 
 .PHONY: clean
 clean: ## Remove the .cached/ files
@@ -23,11 +23,11 @@ clean: ## Remove the .cached/ files
 
 .PHONY: docs-test
 docs-test: ## Test if documentation can be built without warnings or errors
-	@poetry run mkdocs build -s
+	@uv run mkdocs build -s
 
 .PHONY: docs
 docs: ## Build and serve the documentation
-	@poetry run mkdocs serve
+	@uv run mkdocs serve
 
 .PHONY: help
 help:

@@ -54,4 +54,4 @@ make clean
 ## Motivations
 
 - [plamf repo](https://github.com/plamf/fuji-x-weekly-simulation-profiles)
-- Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).
+- Repository initiated with [fpgmaas/cookiecutter-uv](https://github.com/fpgmaas/cookiecutter-uv).
