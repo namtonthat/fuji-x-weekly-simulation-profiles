@@ -27,7 +27,12 @@ dev = [
   "pytest-cov>=6.0.0",
   "tox>=4.24.2",
 ]
-docs = ["mkdocs>=1.6.1", "mkdocs-material>=9.6.7", "mkdocstrings>=0.29.0"]
+docs = [
+    "mkdocs>=1.6.1",
+ "mkdocs-material>=9.6.7",
+ "mkdocstrings>=0.29.0",
+ "mkdocstrings-python>=1.16.5",
+]
 
 
 # [build-system]
