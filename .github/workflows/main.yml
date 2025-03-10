@@ -25,7 +25,9 @@ jobs:
         uses: ./.github/actions/setup-uv-env
 
       - name: Run checks
-        run: make check
+        run: |
+          make install GROUP_NAME=dev
+          make check
 
   tox:
     runs-on: ubuntu-latest
@@ -37,10 +39,8 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
-      - name: Set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.env }}
+      - name: Set up the environment
+        uses: ./.github/actions/setup-uv-env
 
       - name: Install tox packages
         run: make install GROUP_NAME=dev
@@ -57,10 +57,8 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
-      - name: Set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.env }}
+      - name: Set up the environment
+        uses: ./.github/actions/setup-uv-env
 
       - name: Install docs packages
         run: make install GROUP_NAME=docs
