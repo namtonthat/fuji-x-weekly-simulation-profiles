@@ -15,9 +15,11 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - uses: hynek/setup-cached-uv@v2
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v5
       with:
-        if-use-cache: ${{ startsWith(matrix.python-version, 'pypy') }}
+        enable-cache: true
+        cache-dependency-glob: "**/pyproject.toml"
 
     - name: Install dependencies
       run: make install
