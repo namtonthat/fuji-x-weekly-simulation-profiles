@@ -12,11 +12,6 @@ install: ## Install uv and pre-commit hooks
 check: ## Run code quality tools.
 	@./scripts/check.sh
 
-.PHONY: scrape
-scrape: ## Scrape the data from the Fuji X Weekly website
-	@echo "📷 Scraping data from Fuji X Weekly"
-	@uv run python -m scrape.scraper
-
 .PHONY: copy
 copy: ## Copy profiles to the required folders
 	@echo "📷 Copying fuji_profiles"
@@ -35,3 +30,7 @@ docs-test: ## Test if documentation can be built without warnings or errors
 docs: ## Build and serve the documentation
 	@uv run mkdocs serve
 
+.PHONY: scrape
+scrape: ## Scrape the data from the Fuji X Weekly website
+	@echo "📷 Scraping data from Fuji X Weekly"
+	@uv run python -m scrape.scraper
