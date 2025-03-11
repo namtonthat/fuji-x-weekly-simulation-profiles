@@ -399,23 +399,12 @@ if __name__ == "__main__":
         sensor_recipes = {**sensor_recipes, **current_sensor}
 
     # sensor_recipes = {
-    #     FujiSensor.X_TRANS_V: [
+    #     FujiSensor.X_TRANS_IV: [
     #         FujiRecipe(
-    #             sensor=FujiSensor.X_TRANS_V,
+    #             sensor=FujiSensor.X_TRANS_IV,
     #             link=FujiRecipeLink(
-    #                 name="1960 Chrome",
-    #                 url="https://fujixweekly.com/2024/07/15/1960-chrome-fujifilm-x-t5-x-trans-v-x-e4-x-trans-iv-film-simulation-recipe/",
-    #             ),
-    #         )
-    #     ],
-    # }
-    # sensor_recipes = {
-    #     FujiSensor.X_TRANS_III: [
-    #         FujiRecipe(
-    #             sensor=FujiSensor.X_TRANS_III,
-    #             link=FujiRecipeLink(
-    #                 name="My Fujifilm X-T30 Monochorme Kodachrome",
-    #                 url="https://fujixweekly.com/2020/03/16/my-fujifilm-x-t30-monochrome-kodachrome-film-simulation-recipe/",
+    #                 name="Kentmere Pan 400",
+    #                 url="https://fujixweekly.com/2024/03/15/kentmere-pan-400-fujifilm-x100v-x-trans-iv-v-film-simulation-recipe/",
     #             ),
     #         )
     #     ],
@@ -440,9 +429,9 @@ if __name__ == "__main__":
                 failed_urls.append(recipe.link.url)
 
         # Update the cached URLs.
-        new_cached_urls = cached_sensor_urls + new_urls
+        new_cached_urls = sorted(cached_sensor_urls + new_urls)
         cached_cache.write(new_cached_urls)
 
         # Write failed URLs to a separate file using the FAILED category.
         failed_cache = URLCache(sensor_type, category=URLCacheCategory.FAILED)
-        failed_cache.write(failed_urls)
+        failed_cache.write(sorted(failed_urls))

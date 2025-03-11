@@ -2,8 +2,8 @@ import pytest
 from bs4 import BeautifulSoup
 
 # Import your functions and classes from your package.
-from ..scrape.models import FujiSensor
-from ..scrape.scraper import (
+from scrape.models import FujiSensor
+from scrape.scraper import (
     # FujiRecipe,
     # FujiRecipeLink,
     FujiSimulationProfileParser,

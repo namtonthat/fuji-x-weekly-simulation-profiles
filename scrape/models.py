@@ -187,7 +187,7 @@ class FujiSimulationProfile:
 
 
 def clean_camera_profile_name(camera_tag: str) -> str:
-    camera_profile = camera_tag.replace(" ", "_").replace(".", "").split("/")[0].upper()
+    camera_profile = camera_tag.replace(" ", "_").replace("+", "_").replace(".", "").split("/")[0].upper()
 
     alternative_camera_profile_names = {"CLASSIC_NEGATIVE": "CLASSIC_NEG"}
 
