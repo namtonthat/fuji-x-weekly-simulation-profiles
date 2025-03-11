@@ -7,6 +7,40 @@ from ..scrape.scraper import (
     flatten_and_process_tags,
 )
 
+# sensor_recipes = {
+#     FujiSensor.X_TRANS_IV: [
+#         FujiRecipe(
+#             sensor=FujiSensor.X_TRANS_IV,
+#             link=FujiRecipeLink(
+#                 name="Kentmere Pan 400",
+#                 url="https://fujixweekly.com/2024/03/15/kentmere-pan-400-fujifilm-x100v-x-trans-iv-v-film-simulation-recipe/",
+#             ),
+#         )
+#     ],
+# }
+# sensor_recipes = {
+#     FujiSensor.X_TRANS_V: [
+#         FujiRecipe(
+#             sensor=FujiSensor.X_TRANS_V,
+#             link=FujiRecipeLink(
+#                 name="Easy Reala Ace",
+#                 url="https://fujixweekly.com/2024/06/20/easy-reala-ace-fujifilm-x100vi-x-trans-v-film-simulation-recipe/",
+#             ),
+#         )
+#     ],
+# }
+# sensor_recipes = {
+#     FujiSensor.X_TRANS_III: [
+#         FujiRecipe(
+#             sensor=FujiSensor.X_TRANS_III,
+#             link=FujiRecipeLink(
+#                 name="Nostaglic Emulsion",
+#                 url="https://fujixweekly.com/2024/10/24/nostalgic-emulsion-fujifilm-x-trans-iii-plus-x-t3-x-t30-film-simulation-recipe/ ",
+#             ),
+#         )
+#     ],
+# }
+
 
 # --- FIXED Fixture: Only select top-level <strong> tags ---
 @pytest.fixture

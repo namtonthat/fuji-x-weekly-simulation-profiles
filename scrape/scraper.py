@@ -387,49 +387,15 @@ if __name__ == "__main__":
     sensor_recipes: dict[FujiSensor, list[FujiRecipe]] = {}
 
     # Iterate through each sensors home page and fetch the recipes
-    # for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
-    #     logger.info("Pulling recipes for sensor %s", sensor)
-    #     related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
-    #
-    #     logger.info("Found %s recipes for sensor %s", len(related_recipes), sensor)
-    #
-    #     # Add the sensor and its recipes to the dictionary
-    #     current_sensor = {sensor: related_recipes}
-    #     sensor_recipes = {**sensor_recipes, **current_sensor}
+    for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
+        logger.info("Pulling recipes for sensor %s", sensor)
+        related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
 
-    # sensor_recipes = {
-    #     FujiSensor.X_TRANS_IV: [
-    #         FujiRecipe(
-    #             sensor=FujiSensor.X_TRANS_IV,
-    #             link=FujiRecipeLink(
-    #                 name="Kentmere Pan 400",
-    #                 url="https://fujixweekly.com/2024/03/15/kentmere-pan-400-fujifilm-x100v-x-trans-iv-v-film-simulation-recipe/",
-    #             ),
-    #         )
-    #     ],
-    # }
-    sensor_recipes = {
-        FujiSensor.X_TRANS_V: [
-            FujiRecipe(
-                sensor=FujiSensor.X_TRANS_V,
-                link=FujiRecipeLink(
-                    name="Easy Reala Ace",
-                    url="https://fujixweekly.com/2024/06/20/easy-reala-ace-fujifilm-x100vi-x-trans-v-film-simulation-recipe/",
-                ),
-            )
-        ],
-    }
-    # sensor_recipes = {
-    #     FujiSensor.X_TRANS_III: [
-    #         FujiRecipe(
-    #             sensor=FujiSensor.X_TRANS_III,
-    #             link=FujiRecipeLink(
-    #                 name="Nostaglic Emulsion",
-    #                 url="https://fujixweekly.com/2024/10/24/nostalgic-emulsion-fujifilm-x-trans-iii-plus-x-t3-x-t30-film-simulation-recipe/ ",
-    #             ),
-    #         )
-    #     ],
-    # }
+        logger.info("Found %s recipes for sensor %s", len(related_recipes), sensor)
+
+        # Add the sensor and its recipes to the dictionary
+        current_sensor = {sensor: related_recipes}
+        sensor_recipes = {**sensor_recipes, **current_sensor}
 
     # Iterate through each sensor and save the recipes if they haven't been saved before
     for sensor_type, related_recipes in sensor_recipes.items():
