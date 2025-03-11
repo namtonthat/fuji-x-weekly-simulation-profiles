@@ -55,8 +55,23 @@ COMPATIBILITY_MAPPING = {
         "X-H1",
         "X-T30",
     ],
-    FujiSensor.X_TRANS_IV: ["X-T3", "X-T30", "X-Pro3", "X100V", "X-T4", "X-S10"],
-    FujiSensor.X_TRANS_V: ["X-T5", "X-H2", "X-H2S", "X-S20", "GFX100S", "GFX50SII"],
+    FujiSensor.X_TRANS_IV: [
+        "X-T3",
+        "X-T30",
+        "X-Pro3",
+        "X100V",
+        "X-T4",
+        "X-S10",
+    ],
+    FujiSensor.X_TRANS_V: [
+        "X-T5",
+        "X-H2",
+        "X-H2S",
+        "X-S20",
+        "GFX100S",
+        "GFX50SII",
+        "X100VI",
+    ],
 }
 
 

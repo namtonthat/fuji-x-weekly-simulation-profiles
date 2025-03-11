@@ -29,7 +29,6 @@ def fill_xml_template(profile_dict: dict, template: str) -> str:
     Returns:
     str: XML template filled with profile values.
     """
-    # logger.info('Filling template with profile_dict: "%s"', profile_dict)
     for attribute_name, attr_value in profile_dict.items():
         if attr_value is None:
             logger.info(f"Attribute '{attribute_name}' is None, skipping...")
@@ -93,7 +92,7 @@ class FujiSimulationProfileParser:
 
         processed_tags = list(flatten_and_process_tags(self.tags))
 
-        logger.debug("Processed tags: %s", processed_tags)
+        logger.info("Processed tags: %s", processed_tags)
         return processed_tags
 
     @property
@@ -116,10 +115,11 @@ class FujiSimulationProfileParser:
         profile_dict = {}
         for tag in self.processed_tags:
             try:
+                # Remove non-breaking spaces before splitting
+                tag = tag.replace("\xa0", " ")
+
                 key, value = tag.split(": ", 1)
             except ValueError:
-                # Sometimes the tag is just the film simulation name
-                # e.g. "Classic Chrome"
                 standardised_tag = clean_camera_profile_name(tag)
                 if standardised_tag in FilmSimulation.__members__:
                     key = "film_simulation"
@@ -136,16 +136,12 @@ class FujiSimulationProfileParser:
         return profile_dict
 
     def create_fuji_profile(self) -> FujiSimulationProfile | None:
-        try:
-            fuji_profile = FujiSimulationProfile.create_instance(self.profile_dict)
-        except TypeError:
-            logger.warning(
-                "Could not create FujiSimulationProfile instance from %s",
-                self.profile_dict,
-            )
-            return None
-        else:
-            return fuji_profile
+        fuji_profile = FujiSimulationProfile.create_instance(self.profile_dict)
+        logger.warning(
+            "Could not create FujiSimulationProfile instance from %s",
+            self.profile_dict,
+        )
+        return fuji_profile
 
 
 @dataclass
@@ -258,9 +254,9 @@ class FujiRecipe:
 
 @dataclass
 class FujiRecipes:
-    sensor: FujiSensor  # Assuming FujiSensor is defined somewhere
+    sensor: FujiSensor
     base_sensor_url: str
-    related_recipes: list[FujiRecipe]  # Assuming FujiRecipe is defined somewhere
+    related_recipes: list[FujiRecipe]
 
     @staticmethod
     def soup_representation(url: str) -> BeautifulSoup:
