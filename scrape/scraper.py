@@ -126,6 +126,8 @@ class FujiSimulationProfileParser:
         "Return a list of tags with newlines removed and text stripped"
 
         processed_tags = list(flatten_and_process_tags(self.tags))
+        # Replace non-breaking spaces with regular spaces
+        processed_tags = [tag.replace("\xa0", " ") for tag in processed_tags]
 
         logger.info("Processed tags: %s", processed_tags)
         return processed_tags
@@ -150,9 +152,6 @@ class FujiSimulationProfileParser:
         profile_dict = {}
         for tag in self.processed_tags:
             try:
-                # Remove non-breaking spaces before splitting
-                tag = tag.replace("\xa0", " ")
-
                 key, value = tag.split(": ", 1)
             except ValueError:
                 standardised_tag = clean_camera_profile_name(tag)
@@ -345,7 +344,7 @@ GLOBAL_SENSOR_LIST: dict[FujiSensor, str] = {
     # FujiSensor.GFX: "https://fujixweekly.com/fujifilm-gfx-recipes/",
     # FujiSensor.X_TRANS_I: "https://fujixweekly.com/fujifilm-x-trans-i-recipes/",
     # FujiSensor.X_TRANS_II: "https://fujixweekly.com/fujifilm-x-trans-ii-recipes/",
-    # FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
+    FujiSensor.X_TRANS_III: "https://fujixweekly.com/fujifilm-x-trans-iii-recipes/",
     FujiSensor.X_TRANS_IV: "https://fujixweekly.com/fujifilm-x-trans-iv-recipes/",
     FujiSensor.X_TRANS_V: "https://fujixweekly.com/fujifilm-x-trans-v-recipes/",
 }
@@ -388,15 +387,15 @@ if __name__ == "__main__":
     sensor_recipes: dict[FujiSensor, list[FujiRecipe]] = {}
 
     # Iterate through each sensors home page and fetch the recipes
-    for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
-        logger.info("Pulling recipes for sensor %s", sensor)
-        related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
-
-        logger.info("Found %s recipes for sensor %s", len(related_recipes), sensor)
-
-        # Add the sensor and its recipes to the dictionary
-        current_sensor = {sensor: related_recipes}
-        sensor_recipes = {**sensor_recipes, **current_sensor}
+    # for sensor, sensor_url in GLOBAL_SENSOR_LIST.items():
+    #     logger.info("Pulling recipes for sensor %s", sensor)
+    #     related_recipes = FujiRecipes.fetch_recipes(sensor, sensor_url)
+    #
+    #     logger.info("Found %s recipes for sensor %s", len(related_recipes), sensor)
+    #
+    #     # Add the sensor and its recipes to the dictionary
+    #     current_sensor = {sensor: related_recipes}
+    #     sensor_recipes = {**sensor_recipes, **current_sensor}
 
     # sensor_recipes = {
     #     FujiSensor.X_TRANS_IV: [
@@ -405,6 +404,28 @@ if __name__ == "__main__":
     #             link=FujiRecipeLink(
     #                 name="Kentmere Pan 400",
     #                 url="https://fujixweekly.com/2024/03/15/kentmere-pan-400-fujifilm-x100v-x-trans-iv-v-film-simulation-recipe/",
+    #             ),
+    #         )
+    #     ],
+    # }
+    sensor_recipes = {
+        FujiSensor.X_TRANS_V: [
+            FujiRecipe(
+                sensor=FujiSensor.X_TRANS_V,
+                link=FujiRecipeLink(
+                    name="Easy Reala Ace",
+                    url="https://fujixweekly.com/2024/06/20/easy-reala-ace-fujifilm-x100vi-x-trans-v-film-simulation-recipe/",
+                ),
+            )
+        ],
+    }
+    # sensor_recipes = {
+    #     FujiSensor.X_TRANS_III: [
+    #         FujiRecipe(
+    #             sensor=FujiSensor.X_TRANS_III,
+    #             link=FujiRecipeLink(
+    #                 name="Nostaglic Emulsion",
+    #                 url="https://fujixweekly.com/2024/10/24/nostalgic-emulsion-fujifilm-x-trans-iii-plus-x-t3-x-t30-film-simulation-recipe/ ",
     #             ),
     #         )
     #     ],

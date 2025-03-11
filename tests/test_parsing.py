@@ -1,23 +1,17 @@
 import pytest
 from bs4 import BeautifulSoup
 
-# Import your functions and classes from your package.
-from scrape.models import FujiSensor
-from scrape.scraper import (
-    # FujiRecipe,
-    # FujiRecipeLink,
-    FujiSimulationProfileParser,
+from ..scrape.models import FujiSensor
+from ..scrape.scraper import (
+    FujiRecipes,
     flatten_and_process_tags,
 )
 
-# ---------------------------
-# Fixtures for sample HTML
-# ---------------------------
 
-
+# --- FIXED Fixture: Only select top-level <strong> tags ---
 @pytest.fixture
 def sample_html():
-    # A simplified HTML snippet matching your scenario.
+    # Note: Ensure the outer container wraps all the top-level <strong> tags.
     return """
     <div>
         <strong>Film Simulation: Eterna Bleach Bypass</strong><br/>
@@ -55,19 +49,13 @@ def sample_html():
 
 
 @pytest.fixture
-def soup_from_sample_html(sample_html):
-    return BeautifulSoup(sample_html, "html.parser")
+def strong_tags(sample_html):
+    soup = BeautifulSoup(sample_html, "html.parser")
+    # Only select top-level <strong> tags that are direct children of the <div>
+    return soup.select("div > strong")
 
 
-@pytest.fixture
-def strong_tags(soup_from_sample_html):
-    # Get all <strong> tags from the sample HTML.
-    return soup_from_sample_html.find_all("strong")
-
-
-# ---------------------------
-# Tests for flatten_and_process_tags
-# ---------------------------
+# --- Tests for flatten_and_process_tags ---
 
 
 def test_flatten_and_process_tags(strong_tags):
@@ -115,25 +103,28 @@ def test_nbsp_replacement():
     """
     html = "<div><strong>Test:\xa0Value</strong></div>"
     soup = BeautifulSoup(html, "html.parser")
-    tags = soup.find_all("strong")
+    # Use a selector that gets the intended tag.
+    tags = soup.select("div > strong")
     result = list(flatten_and_process_tags(tags))
     expected = ["Test: Value"]
     assert result == expected
 
 
-# ---------------------------
-# Example: Using monkeypatch to override network calls in FujiSimulationProfileParser
-# ---------------------------
+# --- Monkeypatch Test for Scraper Network Call ---
+#
+# Assuming that in your module, there is a module-level function named
+# `soup_representation` used by FujiSimulationProfileParser.fetch_recipes,
+# we patch that function. If your class should have this method, consider
+# adding it to the class.
+def fake_soup_representation(url: str):
+    from bs4 import BeautifulSoup
 
-
-@pytest.fixture
-def fake_soup():
-    # Create a fake soup object to simulate a scraped page.
+    # Return a fake soup that simulates a scraped page.
     html = """
     <html>
       <body>
-        <a href="https://fujixweekly.com/2024/07/15/sample-recipe/" >Sample Recipe</a>
         <a href="#content">Start</a>
+        <a href="https://fujixweekly.com/2024/07/15/sample-recipe/" >Sample Recipe</a>
         <a href="https://fujixweekly.com/2024/07/15/sample-recipe2/" >Sample Recipe 2</a>
       </body>
     </html>
@@ -141,39 +132,26 @@ def fake_soup():
     return BeautifulSoup(html, "html.parser")
 
 
-def fake_soup_representation(url: str):
-    # This fake function ignores the URL and returns our fake soup.
-    return BeautifulSoup(
-        """
-        <html>
-          <body>
-            <a href="#content">Start</a>
-            <a href="https://fujixweekly.com/2024/07/15/sample-recipe/" >Sample Recipe</a>
-            <a href="https://fujixweekly.com/2024/07/15/sample-recipe2/" >Sample Recipe 2</a>
-          </body>
-        </html>
-    """,
-        "html.parser",
-    )
-
-
 def test_fuji_simulation_profile_parser_monkeypatch(monkeypatch):
     """
     Test FujiSimulationProfileParser by monkeypatching the network call.
-    This avoids actual network requests and uses our fake soup instead.
+    This avoids actual network requests.
     """
-    # Monkeypatch the soup_representation method to use our fake function.
-    monkeypatch.setattr(FujiSimulationProfileParser, "soup_representation", staticmethod(fake_soup_representation))
+    # Adjust the monkeypatch target according to your implementation.
+    # If FujiSimulationProfileParser does not have a soup_representation method,
+    # patch the module-level function instead.
+    from ..scrape import scraper  # Adjust the import to your module structure.
 
-    # Assume we have a dummy sensor and URL.
-    dummy_sensor = FujiSensor.X_TRANS_V  # Or any valid sensor from your enum.
+    monkeypatch.setattr(scraper, "soup_representation", fake_soup_representation)
+
+    # Use a dummy sensor and URL.
+    dummy_sensor = FujiSensor.X_TRANS_V  # Replace with an actual enum member if needed.
     dummy_url = "https://fakex.com/sensor"
 
-    # Fetch recipes. This should now use the fake soup.
-    recipes = FujiSimulationProfileParser.fetch_recipes(dummy_sensor, dummy_url)
+    # Call fetch_recipes, which internally uses soup_representation.
+    recipes = FujiRecipes.fetch_recipes(dummy_sensor, dummy_url)
 
-    # Check that recipes were created and match our fake HTML links.
-    # Adjust the expectations according to the actual logic of your fetch_recipes.
+    # Check that recipes were created as expected.
     assert len(recipes) == 2
     assert recipes[0].link.url == "https://fujixweekly.com/2024/07/15/sample-recipe/"
     assert recipes[1].link.url == "https://fujixweekly.com/2024/07/15/sample-recipe2/"
