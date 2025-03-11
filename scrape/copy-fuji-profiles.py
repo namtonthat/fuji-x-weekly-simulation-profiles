@@ -12,7 +12,7 @@ from scrape.models import FujiSensor
 
 # Global variable
 BASE_PATH = os.path.expanduser("~/Library/Application Support/com.fujifilm.denji/X RAW STUDIO")
-FUJI_EXTENSION = ".FP1"
+FUJI_EXTENSION = ".fp1"
 
 # Setup rich console and logging
 console = Console()

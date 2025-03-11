@@ -116,6 +116,7 @@ class FujiSimulationProfile:
     exposure_compensation: float | None = field(default=None)
     grain_effect: GrainEffect | None = field(default=None)
     highlight: int = 0
+    iso: str | None = field(default=None)
     monochromatic_color: MonochomaticColor | None = field(default=None)
     shadow: int = 0
 

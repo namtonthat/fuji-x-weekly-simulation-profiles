@@ -3,6 +3,7 @@ import os
 import re
 from collections.abc import Generator
 from dataclasses import dataclass
+from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,6 +17,20 @@ from scrape.models import FilmSimulation, FujiSensor, FujiSimulationProfile, Key
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 logger = logging.getLogger(__name__)
+
+
+def extract_date_from_url(url: str) -> datetime:
+    """
+    Extracts a date from a URL in the format:
+    https://fujixweekly.com/YYYY/MM/DD/some-recipe-name/
+    """
+    match = re.search(r"(\d{4})/(\d{2})/(\d{2})", url)
+    if match:
+        year, month, day = map(int, match.groups())
+        return datetime(year, month, day)
+    else:
+        # Return a very large date if no date found
+        return datetime(9999, 12, 31)
 
 
 def fill_xml_template(profile_dict: dict, template: str) -> str:
@@ -204,7 +219,7 @@ class FujiRecipe:
 
     @property
     def output_file_path(self) -> str:
-        return f"fuji_profiles/{self.sensor.value}/{self.link.name}.FP1"
+        return f"fuji_profiles/{self.sensor.value}/{self.link.name}.fp1"
 
     @property
     def jinja2_template(self) -> Template:
@@ -294,9 +309,13 @@ class FujiRecipes:
                 else:
                     related_recipes.append(sensor_recipe)
 
+        # Sorting recipes by the date found in the URL (assuming the URL contains a date in the format YYYY/MM/DD)
+        related_recipes.sort(key=lambda recipe: extract_date_from_url(recipe.link.url))
+
         # Validation Step
         if len(related_recipes) > cls.max_recipes(sensor_url):
             logger.warning(f"More recipes fetched ({len(related_recipes)}) than the expected maximum.")
+
         return related_recipes
 
 
