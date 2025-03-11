@@ -43,6 +43,7 @@ class FilmSimulation(Enum):
     PRO_NEG_HI = "NEGAhi"
     PRO_NEG_STD = "NEGAStd"
     PROVIA = "Provia"
+    REALA_ACE = "REALA_ACE"
     SEPIA = "Sepia"
     VELVIA = "Velvia"
 
@@ -288,7 +289,7 @@ class KeyStandardizer:
             return GrainEffect(grain_effect=grain_effect, grain_effect_size=grain_effect_size)
         except (IndexError, KeyError):
             logging.warning("Could not parse grain effect, setting to FujiEffect.OFF")
-            return GrainEffect(grain_effect=FujiEffect.OFF)  # Use FujiEffect.OFF directly without .value
+            return GrainEffect(grain_effect=FujiEffect.OFF)
 
     @staticmethod
     def white_balance(value: str) -> WhiteBalance:

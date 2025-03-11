@@ -28,16 +28,12 @@ dev = [
   "tox>=4.24.2",
 ]
 docs = [
-    "mkdocs>=1.6.1",
- "mkdocs-material>=9.6.7",
- "mkdocstrings>=0.29.0",
- "mkdocstrings-python>=1.16.5",
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.7",
+  "mkdocstrings>=0.29.0",
+  "mkdocstrings-python>=1.16.5",
 ]
 
-
-# [build-system]
-# requires = ["uv-core>=1.0.0"]
-# build-backend = "uv.core.masonry.api"
 
 [tool.mypy]
 files = ["scrape"]

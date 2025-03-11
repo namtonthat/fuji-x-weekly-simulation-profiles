@@ -2,7 +2,9 @@ import logging
 import os
 import re
 from collections.abc import Generator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
 
 import requests
 from bs4 import BeautifulSoup
@@ -18,6 +20,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
+def extract_date_from_url(url: str) -> datetime:
+    """
+    Extracts a date from a URL in the format:
+    https://fujixweekly.com/YYYY/MM/DD/some-recipe-name/
+    """
+    match = re.search(r"(\d{4})/(\d{2})/(\d{2})", url)
+    if match:
+        year, month, day = map(int, match.groups())
+        return datetime(year, month, day)
+    else:
+        # Return a very large date if no date found
+        return datetime(9999, 12, 31)
+
+
 def fill_xml_template(profile_dict: dict, template: str) -> str:
     """
     Fills an XML template with values from a profile dictionary.
@@ -29,7 +45,6 @@ def fill_xml_template(profile_dict: dict, template: str) -> str:
     Returns:
     str: XML template filled with profile values.
     """
-    # logger.info('Filling template with profile_dict: "%s"', profile_dict)
     for attribute_name, attr_value in profile_dict.items():
         if attr_value is None:
             logger.info(f"Attribute '{attribute_name}' is None, skipping...")
@@ -70,6 +85,38 @@ def snake_to_camel(name: str) -> str:
     return "".join(x.title() for x in components)
 
 
+def flatten_and_process_tags(tags: list[Tag]) -> Generator[str, None, None]:
+    "Process tags from the BeautifulSoup export"
+    for tag in tags:
+        # Remove <a> tags but keep their text
+        for a in tag.find_all("a"):
+            a.replace_with(a.get_text())
+
+        # Split by newline using <br/> as the separator
+        lines = [line.strip() for line in tag.get_text(separator="\n").split("\n") if line.strip()]
+        if not lines:
+            continue
+
+        merged_lines = []
+        i = 0
+        while i < len(lines):
+            # If a line ends with a colon, it's likely the start of a key with a value on the following line(s)
+            if lines[i].endswith(":") and (i + 1 < len(lines)) and (":" not in lines[i + 1]):
+                # Merge with subsequent lines until we hit another key (line that contains a colon)
+                merged_line = lines[i]
+                i += 1
+                while i < len(lines) and (":" not in lines[i]):
+                    merged_line += " " + lines[i]
+                    i += 1
+                merged_lines.append(merged_line)
+            else:
+                merged_lines.append(lines[i])
+                i += 1
+
+        for merged_line in merged_lines:
+            yield merged_line
+
+
 @dataclass
 class FujiSimulationProfileParser:
     tags: list
@@ -78,22 +125,9 @@ class FujiSimulationProfileParser:
     def processed_tags(self) -> list[str]:
         "Return a list of tags with newlines removed and text stripped"
 
-        def flatten_and_process_tags(tags: list[Tag]) -> Generator[str, None, None]:
-            for tag in tags:
-                # Remove <a> tags but keep their text
-                for a in tag.find_all("a"):
-                    a.replace_with(a.get_text())
-
-                if tag.find("br"):
-                    tag_text = tag.get_text(separator="\n")
-                    for line in tag_text.split("\n"):
-                        yield line.strip()
-                else:
-                    yield tag.get_text().strip()
-
         processed_tags = list(flatten_and_process_tags(self.tags))
 
-        logger.debug("Processed tags: %s", processed_tags)
+        logger.info("Processed tags: %s", processed_tags)
         return processed_tags
 
     @property
@@ -116,10 +150,11 @@ class FujiSimulationProfileParser:
         profile_dict = {}
         for tag in self.processed_tags:
             try:
+                # Remove non-breaking spaces before splitting
+                tag = tag.replace("\xa0", " ")
+
                 key, value = tag.split(": ", 1)
             except ValueError:
-                # Sometimes the tag is just the film simulation name
-                # e.g. "Classic Chrome"
                 standardised_tag = clean_camera_profile_name(tag)
                 if standardised_tag in FilmSimulation.__members__:
                     key = "film_simulation"
@@ -136,16 +171,12 @@ class FujiSimulationProfileParser:
         return profile_dict
 
     def create_fuji_profile(self) -> FujiSimulationProfile | None:
-        try:
-            fuji_profile = FujiSimulationProfile.create_instance(self.profile_dict)
-        except TypeError:
-            logger.warning(
-                "Could not create FujiSimulationProfile instance from %s",
-                self.profile_dict,
-            )
-            return None
-        else:
-            return fuji_profile
+        fuji_profile = FujiSimulationProfile.create_instance(self.profile_dict)
+        logger.warning(
+            "Could not create FujiSimulationProfile instance from %s",
+            self.profile_dict,
+        )
+        return fuji_profile
 
 
 @dataclass
@@ -208,7 +239,7 @@ class FujiRecipe:
 
     @property
     def output_file_path(self) -> str:
-        return f"fuji_profiles/{self.sensor.value}/{self.link.name}.FP1"
+        return f"fuji_profiles/{self.sensor.value}/{self.link.name}.fp1"
 
     @property
     def jinja2_template(self) -> Template:
@@ -258,9 +289,9 @@ class FujiRecipe:
 
 @dataclass
 class FujiRecipes:
-    sensor: FujiSensor  # Assuming FujiSensor is defined somewhere
+    sensor: FujiSensor
     base_sensor_url: str
-    related_recipes: list[FujiRecipe]  # Assuming FujiRecipe is defined somewhere
+    related_recipes: list[FujiRecipe]
 
     @staticmethod
     def soup_representation(url: str) -> BeautifulSoup:
@@ -298,9 +329,13 @@ class FujiRecipes:
                 else:
                     related_recipes.append(sensor_recipe)
 
+        # Sorting recipes by the date found in the URL (assuming the URL contains a date in the format YYYY/MM/DD)
+        related_recipes.sort(key=lambda recipe: extract_date_from_url(recipe.link.url))
+
         # Validation Step
         if len(related_recipes) > cls.max_recipes(sensor_url):
             logger.warning(f"More recipes fetched ({len(related_recipes)}) than the expected maximum.")
+
         return related_recipes
 
 
@@ -318,41 +353,35 @@ GLOBAL_SENSOR_LIST: dict[FujiSensor, str] = {
 TIMEOUT_SECONDS = 10
 
 
-def get_cached_url_file_path(sensor: FujiSensor) -> str:
-    return f"cached/{sensor.value}.txt"
+class URLCacheCategory(Enum):
+    CACHED = "cached"
+    FAILED = "failed"
 
 
-def create_cached_urls_file(sensor: FujiSensor) -> None:
-    file_path = get_cached_url_file_path(sensor)
+@dataclass
+class URLCache:
+    sensor: FujiSensor
+    category: URLCacheCategory = URLCacheCategory.CACHED
+    file_path: str = field(init=False)
 
-    # Check if the directory exists, create it if it doesn't
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    def __post_init__(self) -> None:
+        # Construct the file path using the category's value.
+        self.file_path = os.path.join(self.category.value, f"{self.sensor.value}.txt")
+        os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
 
-    with open(file_path, "w") as f:
-        f.write("")
+    def read(self) -> list[str]:
+        """Read URLs from the file; returns an empty list if the file does not exist."""
+        try:
+            with open(self.file_path) as f:
+                return [line.strip() for line in f]
+        except FileNotFoundError:
+            return []
 
-
-def read_cached_urls(sensor: FujiSensor) -> list[str]:
-    "Read the cached URLs from a file"
-    try:
-        file_path = get_cached_url_file_path(sensor)
-        with open(file_path) as f:
-            # Remove the newline character from each line
-            cached_urls = [line.strip() for line in f.readlines()]
-    except FileNotFoundError:
-        return []
-    return cached_urls
-
-
-def write_cached_urls(sensor: FujiSensor, urls: list[str]) -> None:
-    "Write the cached URLs to a file"
-    file_path = get_cached_url_file_path(sensor)
-    if not os.path.exists(file_path):
-        create_cached_urls_file(sensor)
-
-    with open(file_path, "w") as f:
-        logger.info("Writing %s URLs to %s", len(urls), file_path)
-        f.writelines([url + "\n" for url in urls])
+    def write(self, urls: list[str]) -> None:
+        """Write a list of URLs to the file."""
+        with open(self.file_path, "w") as f:
+            logger.info("Writing %s URLs to %s", len(urls), self.file_path)
+            f.writelines(url + "\n" for url in urls)
 
 
 if __name__ == "__main__":
@@ -369,19 +398,51 @@ if __name__ == "__main__":
         current_sensor = {sensor: related_recipes}
         sensor_recipes = {**sensor_recipes, **current_sensor}
 
+    # sensor_recipes = {
+    #     FujiSensor.X_TRANS_V: [
+    #         FujiRecipe(
+    #             sensor=FujiSensor.X_TRANS_V,
+    #             link=FujiRecipeLink(
+    #                 name="1960 Chrome",
+    #                 url="https://fujixweekly.com/2024/07/15/1960-chrome-fujifilm-x-t5-x-trans-v-x-e4-x-trans-iv-film-simulation-recipe/",
+    #             ),
+    #         )
+    #     ],
+    # }
+    # sensor_recipes = {
+    #     FujiSensor.X_TRANS_III: [
+    #         FujiRecipe(
+    #             sensor=FujiSensor.X_TRANS_III,
+    #             link=FujiRecipeLink(
+    #                 name="My Fujifilm X-T30 Monochorme Kodachrome",
+    #                 url="https://fujixweekly.com/2020/03/16/my-fujifilm-x-t30-monochrome-kodachrome-film-simulation-recipe/",
+    #             ),
+    #         )
+    #     ],
+    # }
+
     # Iterate through each sensor and save the recipes if they haven't been saved before
     for sensor_type, related_recipes in sensor_recipes.items():
-        cached_sensor_urls = read_cached_urls(sensor_type)
+        # Instantiate URLCache for cached URLs.
+        cached_cache = URLCache(sensor_type, category=URLCacheCategory.CACHED)
+        cached_sensor_urls = cached_cache.read()
 
         new_urls = []
+        failed_urls = []
         for recipe in related_recipes:
             if recipe.link.url in cached_sensor_urls:
                 logger.info(f"Recipe {recipe.link.name} has previously been saved.")
                 continue
 
-            recipe_saved_successfully = recipe.save()
-            if recipe_saved_successfully:
+            if recipe.save():
                 new_urls.append(recipe.link.url)
+            else:
+                failed_urls.append(recipe.link.url)
 
+        # Update the cached URLs.
         new_cached_urls = cached_sensor_urls + new_urls
-        write_cached_urls(sensor_type, new_cached_urls)
+        cached_cache.write(new_cached_urls)
+
+        # Write failed URLs to a separate file using the FAILED category.
+        failed_cache = URLCache(sensor_type, category=URLCacheCategory.FAILED)
+        failed_cache.write(failed_urls)
