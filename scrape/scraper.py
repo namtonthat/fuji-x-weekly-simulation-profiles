@@ -98,12 +98,29 @@ class FujiSimulationProfileParser:
                 for a in tag.find_all("a"):
                     a.replace_with(a.get_text())
 
-                if tag.find("br"):
-                    tag_text = tag.get_text(separator="\n")
-                    for line in tag_text.split("\n"):
-                        yield line.strip()
-                else:
-                    yield tag.get_text().strip()
+                # Split by newline using <br/> as the separator
+                lines = [line.strip() for line in tag.get_text(separator="\n").split("\n") if line.strip()]
+                if not lines:
+                    continue
+
+                merged_lines = []
+                i = 0
+                while i < len(lines):
+                    # If a line ends with a colon, it's likely the start of a key with a value on the following line(s)
+                    if lines[i].endswith(":") and (i + 1 < len(lines)) and (":" not in lines[i + 1]):
+                        # Merge with subsequent lines until we hit another key (line that contains a colon)
+                        merged_line = lines[i]
+                        i += 1
+                        while i < len(lines) and (":" not in lines[i]):
+                            merged_line += " " + lines[i]
+                            i += 1
+                        merged_lines.append(merged_line)
+                    else:
+                        merged_lines.append(lines[i])
+                        i += 1
+
+                for merged_line in merged_lines:
+                    yield merged_line
 
         processed_tags = list(flatten_and_process_tags(self.tags))
 
@@ -383,6 +400,18 @@ if __name__ == "__main__":
         # Add the sensor and its recipes to the dictionary
         current_sensor = {sensor: related_recipes}
         sensor_recipes = {**sensor_recipes, **current_sensor}
+
+    # sensor_recipes = {
+    #     FujiSensor.X_TRANS_V: [
+    #         FujiRecipe(
+    #             sensor=FujiSensor.X_TRANS_V,
+    #             link=FujiRecipeLink(
+    #                 name="1960 Chrome",
+    #                 url="https://fujixweekly.com/2024/07/15/1960-chrome-fujifilm-x-t5-x-trans-v-x-e4-x-trans-iv-film-simulation-recipe/",
+    #             ),
+    #         )
+    #     ],
+    # }
 
     # Iterate through each sensor and save the recipes if they haven't been saved before
     for sensor_type, related_recipes in sensor_recipes.items():
