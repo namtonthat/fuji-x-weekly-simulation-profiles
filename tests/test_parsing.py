@@ -55,8 +55,6 @@ def strong_tags(sample_html):
 
 
 # --- Tests for flatten_and_process_tags ---
-
-
 def test_flatten_and_process_tags(strong_tags):
     """
     Test that flatten_and_process_tags correctly processes the HTML and

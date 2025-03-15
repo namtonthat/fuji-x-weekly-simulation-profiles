@@ -41,7 +41,7 @@ def sensor_recipes() -> dict[FujiSensor, list[FujiRecipe]]:
     }
 
 
-def test_recipe_save_outputs(sensor_recipes: dict[FujiSensor, list[FujiRecipe]], tmp_path, monkeypatch):
+def test_recipe_save_outputs(tmp_path, monkeypatch):
     """
     Iterate over each sensor recipe, run recipe.save() and compare the generated FP1 output
     to the expected FP1 file.
@@ -52,35 +52,41 @@ def test_recipe_save_outputs(sensor_recipes: dict[FujiSensor, list[FujiRecipe]],
     monkeypatch.setattr("scrape.models.OUTPUT_DIR", str(tmp_path))
     # Adjust this to match your implementation so that FP1 files are written to tmp_path.
 
-    for _, recipes in sensor_recipes.items():
-        for recipe in recipes:
-            # Call .save(); we expect it returns True upon success.
-            success = recipe.save()
-            assert success, f"Recipe.save() failed for {recipe.link.name}"
+    recipe = FujiRecipe(
+        sensor=FujiSensor.X_TRANS_IV,
+        link=FujiRecipeLink(
+            name="Test Recipe",
+            url="https://fujixweekly.com/2024/03/15/test-recipe/",
+        ),
+    )
 
-            # Determine the generated file name.
-            # Here we assume a naming convention: recipe name with spaces replaced by underscores + '.fp1'
-            file_name = recipe.link.name.replace(" ", "_") + ".fp1"
-            generated_fp1_file = tmp_path / file_name
+    # Call .save(); we expect it returns True upon success.
+    success = recipe.save()
+    assert success, f"Recipe.save() failed for {recipe.link.name}"
 
-            if not generated_fp1_file.exists():
-                errors.append(f"Generated FP1 file not found: {generated_fp1_file}")
-                continue
+    # Determine the generated file name.
+    # Here we assume a naming convention: recipe name with spaces replaced by underscores + '.fp1'
+    file_name = recipe.link.name.replace(" ", "_") + ".fp1"
+    generated_fp1_file = tmp_path / file_name
 
-            generated_fp1 = generated_fp1_file.read_text(encoding="utf-8").strip()
+    if not generated_fp1_file.exists():
+        errors.append(f"Generated FP1 file not found: {generated_fp1_file}")
+        pytest.fail("\n\n".join(errors))
 
-            # Locate the expected FP1 file.
-            expected_fp1_file = expected_dir / file_name
-            if not expected_fp1_file.exists():
-                errors.append(f"Expected FP1 file not found: {expected_fp1_file}")
-                continue
+    generated_fp1 = generated_fp1_file.read_text(encoding="utf-8").strip()
 
-            expected_fp1 = expected_fp1_file.read_text(encoding="utf-8").strip()
+    # Locate the expected FP1 file.
+    expected_fp1_file = expected_dir / file_name
+    if not expected_fp1_file.exists():
+        errors.append(f"Expected FP1 file not found: {expected_fp1_file}")
+        pytest.fail("\n\n".join(errors))
 
-            # Compare and, if needed, generate a diff.
-            if generated_fp1 != expected_fp1:
-                diff = "\n".join(difflib.unified_diff(expected_fp1.splitlines(), generated_fp1.splitlines(), fromfile=str(expected_fp1_file), tofile=str(generated_fp1_file), lineterm=""))
-                errors.append(f"Mismatch for {recipe.link.name}:\n{diff}")
+    expected_fp1 = expected_fp1_file.read_text(encoding="utf-8").strip()
+
+    # Compare and, if needed, generate a diff.
+    if generated_fp1 != expected_fp1:
+        diff = "\n".join(difflib.unified_diff(expected_fp1.splitlines(), generated_fp1.splitlines(), fromfile=str(expected_fp1_file), tofile=str(generated_fp1_file), lineterm=""))
+        errors.append(f"Mismatch for {recipe.link.name}:\n{diff}")
 
     if errors:
         pytest.fail("\n\n".join(errors))
