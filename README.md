@@ -7,7 +7,7 @@
 
 **Repo Status**
 
-[![fortnightly scrape status](https://img.shields.io/github/actions/workflow/status/namtonthat/fuji-x-weekly-simulation-profiles/on-fortnightly-scrape.yml?branch=main)](https://github.com/namtonthat/fuji-x-weekly-simulation-profiles/actions/workflows/on-fornightly-scrape.yml?query=branch%3Amain)
+[![fortnightly scrape status](https://img.shields.io/github/actions/workflow/status/namtonthat/fuji-x-weekly-simulation-profiles/on-fortnightly-scrape.yml?branch=${local.module_version})](https://github.com/namtonthat/fuji-x-weekly-simulation-profiles/actions/workflows/on-fornightly-scrape.yml?query=branch%3Amain)
 [![License](https://img.shields.io/github/license/namtonthat/fuji-x-weekly-simulation-profiles)](https://img.shields.io/github/license/namtonthat/fuji-x-weekly-simulation-profiles)
 
 ### Purpose
