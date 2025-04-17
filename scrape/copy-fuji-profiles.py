@@ -304,7 +304,7 @@ def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
     return True
 
 
-def find_valid_fp1_file(directory: str):
+def find_valid_fp1_file(directory: str) -> FP1File | None:
     """
     Loops through files in the given directory and returns the first valid FP1File.
     Returns None if no valid file is found.
