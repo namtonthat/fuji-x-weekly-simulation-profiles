@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
@@ -32,7 +33,11 @@ COMPATIBILITY_MAPPING = {
     ],
     FujiSensor.GFX: ["GFX50R", "GFX50S", "GFX100"],
     FujiSensor.EXR_CMOS: ["X100", "XF1", "X10", "X-S1"],
-    FujiSensor.X_TRANS_I: ["X-Pro1", "X-E1", "X-M1"],
+    FujiSensor.X_TRANS_I: [
+        "X-Pro1",
+        "X-E1",
+        "X-M1",
+    ],
     FujiSensor.X_TRANS_II: [
         "X100S",
         "X100T",
@@ -71,9 +76,26 @@ COMPATIBILITY_MAPPING = {
         "GFX100S",
         "GFX50SII",
         "X100VI",
-        "XM5",
+        "X-M5",
     ],
 }
+
+
+# Error Handling Classes
+class InvalidDestinationPathError(ValueError):
+    """Raised when the destination path cannot be parsed."""
+
+
+class CameraModelExtractionError(ValueError):
+    """Raised when the camera model cannot be extracted from a folder."""
+
+
+class UnknownSensorError(ValueError):
+    """Raised when a sensor name is not found in FujiSensor enum."""
+
+
+class IncompatibleSensorError(ValueError):
+    """Raised when a camera model is not compatible with the selected sensor."""
 
 
 # Value error subclasses
@@ -185,7 +207,7 @@ class FP1TemplateFiles:
     def _generate_valid_files(self) -> list[FP1File]:
         valid_files = []
         for file_name in os.listdir(self.source_directory):
-            if file_name.upper().endswith(FUJI_EXTENSION):
+            if file_name.lower().endswith(FUJI_EXTENSION):
                 valid_files.append(
                     FP1File(
                         source_file_path=os.path.join(self.source_directory, file_name),
@@ -232,48 +254,72 @@ def select_folder(folder_dict: dict) -> str:
     return options[int_choice]
 
 
-def find_valid_fp1_file(directory: str) -> FP1File | None:
-    for file_name in os.listdir(directory):
-        if file_name.endswith(FUJI_EXTENSION):
-            file_path = os.path.join(directory, file_name)
-            fp1_file = FP1File(file_path)
-            if fp1_file.extract_tags():
-                return fp1_file
-    return None
+def extract_camera_model(destination_path: str) -> str:
+    path_parts = destination_path.strip(os.sep).split(os.sep)
+
+    if not path_parts:
+        raise InvalidDestinationPathError()
+
+    last_part = path_parts[-1]
+
+    if ":" in last_part:
+        model = last_part.split(":")[0]
+        if not model:
+            raise CameraModelExtractionError()
+        return model
+
+    if len(path_parts) >= 2:
+        model = path_parts[-2]
+        if not model:
+            raise CameraModelExtractionError()
+        return model
+
+    raise CameraModelExtractionError()
 
 
 def normalize_sensor_name(sensor_name: str) -> str:
     """
     Normalize the sensor name to match the enum member names.
-    Example: 'X-Trans-IV' -> 'X_TRANS_IV'
+    For example: 'X-Trans-IV' -> 'X_TRANS_IV'
     """
     return sensor_name.replace("-", "_").upper()
 
 
 def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
-    """
-    Checks the sensor type from the fuji_profiles_path and spits out a warning
-    if the destination_path is not compatiable
-    """
     normalized_sensor_name = normalize_sensor_name(selected_sensor)
-    selected_sensor_enum = FujiSensor[normalized_sensor_name]
-    compatiable_camera_models: list[str] = COMPATIBILITY_MAPPING.get(selected_sensor_enum, [])
-    camera_model: str = destination_path.split("/")[-2]
 
     try:
-        compatiable_sensor_type = camera_model in compatiable_camera_models
+        selected_sensor_enum = FujiSensor[normalized_sensor_name]
+    except KeyError as e:
+        raise UnknownSensorError() from e
 
-        if not compatiable_sensor_type:
-            console.print(
-                f"Warning: {camera_model} is not a compatiable sensor type;",
-                "These might not be interpretted properly once copied over.",
-                style="bold red",
-            )
-            return False
-    except KeyError:
-        console.print(f"Could not find {camera_model} in the compatiable sensor types.")
-        return False
+    compatiable_camera_models = COMPATIBILITY_MAPPING.get(selected_sensor_enum, [])
+
+    camera_model = extract_camera_model(destination_path)
+
+    if camera_model not in compatiable_camera_models:
+        raise IncompatibleSensorError()
+
+    console.print("[green]✓ Sensor '{}' is compatible with '{}'[/green]", selected_sensor_enum.name, camera_model)
     return True
+
+
+def find_valid_fp1_file(directory: str):
+    """
+    Loops through files in the given directory and returns the first valid FP1File.
+    Returns None if no valid file is found.
+    """
+    for file_name in os.listdir(directory):
+        if file_name.lower().endswith(FUJI_EXTENSION):
+            file_path = os.path.join(directory, file_name)
+            fp1_file = FP1File(file_path)
+            if fp1_file.extract_tags():
+                return fp1_file
+            else:
+                console.print(f"[yellow][DEBUG] Invalid FP1 file (no tags): {file_path}[/yellow]")
+        else:
+            console.print(f"[dim][DEBUG] Skipping non-fp1 file: {file_name}[/dim]")
+    return None
 
 
 if __name__ == "__main__":
@@ -286,17 +332,23 @@ if __name__ == "__main__":
     selected_profile_folder = select_folder(profile_folders)
     fuji_profiles_path = os.path.join(fuji_profiles_dir, selected_profile_folder)
 
-    # Select destination folder from base_path
+    # Select destination folder from BASE_PATH
     destination_folders = list_folders_with_subfolders(BASE_PATH)
     selected_destination_folder = select_folder(destination_folders)
     destination_path = os.path.join(BASE_PATH, selected_destination_folder)
 
-    is_compatiable_sensor(selected_profile_folder, destination_path)
+    try:
+        is_compatiable_sensor(selected_profile_folder, destination_path)
+    except (InvalidDestinationPathError, CameraModelExtractionError, UnknownSensorError, IncompatibleSensorError) as e:
+        console.print("[bold red]ERROR:[/bold red] {}", str(e))
+        sys.exit(1)
 
     valid_fp1_file = find_valid_fp1_file(destination_path)
     if not valid_fp1_file:
+        console.print("[bold red]No valid .fp1 files found.[/bold red]")
         raise NoValidFileError(FUJI_EXTENSION)
 
+    console.print("[green]Valid FP1 file found and processing...[/green]")
     tags_to_apply = valid_fp1_file.extract_tags()
     console.print(f"Tags to apply: {tags_to_apply}", style="bold yellow")
 
