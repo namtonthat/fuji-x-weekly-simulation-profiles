@@ -195,8 +195,8 @@ def resolve_conditional_value(value: str, sensor: FujiSensor) -> str:
 
     Also handles space-separated format: 'Strong (X-Trans IV) Weak (X-Trans V)'
     """
-    # Pattern: "ValueText (SensorName)" — find all occurrences
-    pattern = re.compile(r"(\w+)\s*\(([^)]+)\)")
+    # Only match parenthesized text that looks like a sensor name (contains "X-Trans" or "GFX" etc)
+    pattern = re.compile(r"(\w+)\s*\((X-Trans[^)]*|GFX[^)]*|Bayer[^)]*|EXR[^)]*)\)", re.IGNORECASE)
     matches = pattern.findall(value)
 
     if not matches:
