@@ -49,8 +49,9 @@ def test_recipe_save_outputs(tmp_path, monkeypatch):
     errors = []
     expected_dir = Path(__file__).parent / "expected_fp1"
 
-    monkeypatch.setattr("scrape.models.OUTPUT_DIR", str(tmp_path))
-    # Adjust this to match your implementation so that FP1 files are written to tmp_path.
+    # output_file_path returns a relative path like "fuji_profiles/<sensor>/<name>.fp1".
+    # Monkeypatch os.getcwd so relative paths resolve under tmp_path.
+    monkeypatch.chdir(tmp_path)
 
     recipe = FujiRecipe(
         sensor=FujiSensor.X_TRANS_IV,

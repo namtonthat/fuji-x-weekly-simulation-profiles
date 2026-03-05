@@ -12,7 +12,7 @@ from bs4.element import Tag
 from jinja2 import Environment, FileSystemLoader, Template
 from requests.exceptions import RequestException
 
-from scrape.models import FilmSimulation, FujiSensor, FujiSimulationProfile, KeyStandardizer, clean_camera_profile_name
+from scrape.models import FilmSimulation, FujiSensor, FujiSimulationProfile, KeyStandardizer, clean_camera_profile_name, resolve_conditional_value
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -54,7 +54,7 @@ def fill_xml_template(profile_dict: dict, template: str) -> str:
         if xml_tag:
             template = replace_xml_value(template, xml_tag, attr_value)
         else:
-            logging.warning(f"No XML tag mapping found for attribute '{attribute_name}'")
+            logger.warning(f"No XML tag mapping found for attribute '{attribute_name}'")
 
     return template
 
@@ -85,7 +85,7 @@ def snake_to_camel(name: str) -> str:
     return "".join(x.title() for x in components)
 
 
-def flatten_and_process_tags(tags: list[Tag]) -> Generator[str, None, None]:
+def flatten_and_process_tags(tags: list[Tag]) -> Generator[str]:
     "Process tags from the BeautifulSoup export"
     for tag in tags:
         # Remove <a> tags but keep their text
@@ -120,6 +120,7 @@ def flatten_and_process_tags(tags: list[Tag]) -> Generator[str, None, None]:
 @dataclass
 class FujiSimulationProfileParser:
     tags: list
+    sensor: FujiSensor | None = None
 
     @property
     def processed_tags(self) -> list[str]:
@@ -160,6 +161,10 @@ class FujiSimulationProfileParser:
                     value = standardised_tag
                 else:
                     continue
+
+            # Resolve conditional values like "Off (X-Trans V); Weak (X-Trans IV)"
+            if self.sensor is not None:
+                value = resolve_conditional_value(value, self.sensor)
 
             KeyStandardizer.initialise_parsing_methods()
             clean_key = standardise_key_names(key)
@@ -215,13 +220,13 @@ class FujiRecipeLink:
         strong_tags = soup.find_all("strong")
         return strong_tags
 
-    def get_profile(self) -> FujiSimulationProfile | None:
+    def get_profile(self, sensor: FujiSensor | None = None) -> FujiSimulationProfile | None:
         try:
             tags = self.parse_webpage_for_tags()
             if not tags:
                 logger.error("No tags found in the webpage")
                 return None
-            profile_parser_instance = FujiSimulationProfileParser(tags=tags)
+            profile_parser_instance = FujiSimulationProfileParser(tags=tags, sensor=sensor)
             return profile_parser_instance.create_fuji_profile()
         except RequestException:
             logger.exception(f"Error fetching URL {self.url}")
@@ -260,7 +265,7 @@ class FujiRecipe:
         return filled_template
 
     def as_dict(self) -> dict:
-        fuji_profile = FujiRecipeLink(name=self.link.name, url=self.link.url).get_profile()
+        fuji_profile = FujiRecipeLink(name=self.link.name, url=self.link.url).get_profile(sensor=self.sensor)
         if isinstance(fuji_profile, FujiSimulationProfile):
             return fuji_profile.to_flat_dict()
         else:

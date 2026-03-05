@@ -6,6 +6,8 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum
 from typing import Any, ClassVar
 
+logger = logging.getLogger(__name__)
+
 
 class FujiEffect(Enum):
     STRONG = "STRONG"
@@ -155,7 +157,7 @@ class FujiSimulationProfile:
             if key in valid_fields:
                 filtered_data[key] = value
             else:
-                logging.warning(f"Invalid key '{key}' in data. This key will be ignored.")
+                logger.warning(f"Invalid key '{key}' in data. This key will be ignored.")
 
         return cls(**filtered_data)
 
@@ -184,6 +186,44 @@ class FujiSimulationProfile:
                 del flat_dict[fuji_simulation_profile_field.name]
 
         return flat_dict
+
+
+def resolve_conditional_value(value: str, sensor: FujiSensor) -> str:
+    """
+    Parses values like 'Off (X-Trans V); Weak (X-Trans IV)' and returns
+    the value matching the given sensor. Falls back to first value if no match.
+    """
+    if ";" not in value:
+        return value
+
+    parts = [part.strip() for part in value.split(";")]
+    # Pattern: "ValueText (SensorName)"
+    pattern = re.compile(r"^(.+?)\s*\(([^)]+)\)\s*$")
+
+    parsed: list[tuple[str, str]] = []
+    for part in parts:
+        match = pattern.match(part)
+        if match:
+            parsed.append((match.group(1).strip(), match.group(2).strip()))
+        else:
+            parsed.append((part.strip(), ""))
+
+    # Normalise sensor value for comparison: FujiSensor.X_TRANS_IV.value = "X-Trans-IV"
+    # Website text uses "X-Trans IV" (with space instead of hyphen)
+    sensor_value_normalised = sensor.value.replace("-", " ").replace("  ", " ").lower()
+
+    for val, sensor_text in parsed:
+        sensor_text_normalised = sensor_text.replace("-", " ").replace("  ", " ").lower()
+        if sensor_text_normalised == sensor_value_normalised:
+            return val
+
+    # Fall back to the first value
+    logger.warning(
+        "No sensor match found for '%s' with sensor '%s', falling back to first value",
+        value,
+        sensor.value,
+    )
+    return parsed[0][0]
 
 
 def clean_camera_profile_name(camera_tag: str) -> str:
@@ -262,7 +302,7 @@ class KeyStandardizer:
         try:
             dynamic_range_value = DynamicRange[value].value
         except KeyError:
-            logging.warning("Could not parse dynamic range, setting to AUTO")
+            logger.warning("Could not parse dynamic range, setting to AUTO")
             dynamic_range_value = DynamicRange.DRAUTO.value
 
         return dynamic_range_value
@@ -272,12 +312,12 @@ class KeyStandardizer:
         exposure_regex = r"[+-]?\d+(?:/\d+)?"
         matches = re.findall(exposure_regex, value)
         if not matches:
-            logging.warning("Could not parse exposure compensation from '%s', defaulting to 0.0", value)
+            logger.warning("Could not parse exposure compensation from '%s', defaulting to 0.0", value)
             return 0.0
         return convert_to_float(matches[0])
 
     @staticmethod
-    def film_simluation(value: str) -> str:
+    def film_simulation(value: str) -> str:
         camera_profile_value = clean_camera_profile_name(value)
         return FilmSimulation[camera_profile_value].value
 
@@ -291,7 +331,7 @@ class KeyStandardizer:
 
             return GrainEffect(grain_effect=grain_effect, grain_effect_size=grain_effect_size)
         except (IndexError, KeyError):
-            logging.warning("Could not parse grain effect, setting to FujiEffect.OFF")
+            logger.warning("Could not parse grain effect, setting to FujiEffect.OFF")
             return GrainEffect(grain_effect=FujiEffect.OFF)
 
     @staticmethod
@@ -365,7 +405,7 @@ class KeyStandardizer:
             else:
                 return int(number_str)
         else:
-            logging.warning("Could not convert %s to float, setting to 0", value)
+            logger.warning("Could not convert %s to float, setting to 0", value)
             converted_value = 0.0
         return converted_value
 
@@ -385,7 +425,7 @@ class KeyStandardizer:
             warm_cool = int(match.group(1))
             magenta_green = int(match.group(2))
         else:
-            logging.warning("Could not convert %s to MonochromaticColor, setting to 0", value)
+            logger.warning("Could not convert %s to MonochromaticColor, setting to 0", value)
             warm_cool = 0
             magenta_green = 0
 
@@ -401,7 +441,7 @@ class KeyStandardizer:
             "color_chrome_effect": KeyStandardizer.color_chrome_effect,
             "dynamic_range": KeyStandardizer.dynamic_range,
             "exposure_compensation": KeyStandardizer.exposure_compensation,
-            "film_simulation": KeyStandardizer.film_simluation,
+            "film_simulation": KeyStandardizer.film_simulation,
             "grain_effect": KeyStandardizer.grain_effect,
             "high_iso_nr": KeyStandardizer.numerical_value,
             "highlight": KeyStandardizer.numerical_value,
