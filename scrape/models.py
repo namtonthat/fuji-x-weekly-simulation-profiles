@@ -192,30 +192,24 @@ def resolve_conditional_value(value: str, sensor: FujiSensor) -> str:
     """
     Parses values like 'Off (X-Trans V); Weak (X-Trans IV)' and returns
     the value matching the given sensor. Falls back to first value if no match.
+
+    Also handles space-separated format: 'Strong (X-Trans IV) Weak (X-Trans V)'
     """
-    if ";" not in value:
+    # Pattern: "ValueText (SensorName)" — find all occurrences
+    pattern = re.compile(r"(\w+)\s*\(([^)]+)\)")
+    matches = pattern.findall(value)
+
+    if not matches:
         return value
-
-    parts = [part.strip() for part in value.split(";")]
-    # Pattern: "ValueText (SensorName)"
-    pattern = re.compile(r"^(.+?)\s*\(([^)]+)\)\s*$")
-
-    parsed: list[tuple[str, str]] = []
-    for part in parts:
-        match = pattern.match(part)
-        if match:
-            parsed.append((match.group(1).strip(), match.group(2).strip()))
-        else:
-            parsed.append((part.strip(), ""))
 
     # Normalise sensor value for comparison: FujiSensor.X_TRANS_IV.value = "X-Trans-IV"
     # Website text uses "X-Trans IV" (with space instead of hyphen)
     sensor_value_normalised = sensor.value.replace("-", " ").replace("  ", " ").lower()
 
-    for val, sensor_text in parsed:
+    for val, sensor_text in matches:
         sensor_text_normalised = sensor_text.replace("-", " ").replace("  ", " ").lower()
         if sensor_text_normalised == sensor_value_normalised:
-            return val
+            return val.strip()
 
     # Fall back to the first value
     logger.warning(
@@ -223,7 +217,7 @@ def resolve_conditional_value(value: str, sensor: FujiSensor) -> str:
         value,
         sensor.value,
     )
-    return parsed[0][0]
+    return matches[0][0].strip()
 
 
 def clean_camera_profile_name(camera_tag: str) -> str:

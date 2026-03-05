@@ -15,7 +15,7 @@
         <FileType>JPG</FileType>
         <ImageSize>L3x2</ImageSize>
         <ImageQuality>Normal</ImageQuality>
-        <ExposureBias>0.67</ExposureBias>
+        <ExposureBias>3.0</ExposureBias>
         <DynamicRange>200</DynamicRange>
         <WideDRange></WideDRange>
         <FilmSimulation>Velvia</FilmSimulation>
