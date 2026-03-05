@@ -170,12 +170,14 @@ class FujiSimulationProfileParser:
         return profile_dict
 
     def create_fuji_profile(self) -> FujiSimulationProfile | None:
-        fuji_profile = FujiSimulationProfile.create_instance(self.profile_dict)
-        logger.warning(
-            "Could not create FujiSimulationProfile instance from %s",
-            self.profile_dict,
-        )
-        return fuji_profile
+        try:
+            return FujiSimulationProfile.create_instance(self.profile_dict)
+        except Exception:
+            logger.warning(
+                "Could not create FujiSimulationProfile instance from %s",
+                self.profile_dict,
+            )
+            return None
 
 
 @dataclass
@@ -218,6 +220,7 @@ class FujiRecipeLink:
             tags = self.parse_webpage_for_tags()
             if not tags:
                 logger.error("No tags found in the webpage")
+                return None
             profile_parser_instance = FujiSimulationProfileParser(tags=tags)
             return profile_parser_instance.create_fuji_profile()
         except RequestException:
@@ -234,7 +237,7 @@ class FujiRecipe:
     link: FujiRecipeLink
 
     # Defaults
-    template_location = "templates/FP1.jinja2"
+    template_location = "templates/fp1.jinja2"
 
     @property
     def output_file_path(self) -> str:

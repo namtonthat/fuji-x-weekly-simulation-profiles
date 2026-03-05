@@ -50,7 +50,7 @@ show_error_codes = true
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py313"
 line-length = 200
 fix = true
 [tool.ruff.lint]
@@ -109,7 +109,7 @@ skip_empty = true
 
 [tool.coverage.run]
 branch = true
-source = ["fuji_x_weekly_simulation_profiles"]
+source = ["scrape"]
 
 
 [tool.ruff.per-file-ignores]

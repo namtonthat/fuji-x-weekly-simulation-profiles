@@ -133,7 +133,7 @@ class FujiSimulationProfile:
         "grain_effect_grain_effect_size": "GrainEffectSize",
         "high_iso_nr": "NoisReduction",
         "highlight": "HighlightTone",
-        "monochromatic_color_magnetic_green": "MonochromaticColor_MG",
+        "monochromatic_color_magenta_green": "MonochromaticColor_MG",
         "monochromatic_color_warm_cool": "MonochromaticColor_WC",
         "shadow": "ShadowTone",
         "sharpness": "Sharpness",
@@ -271,6 +271,9 @@ class KeyStandardizer:
     def exposure_compensation(value: str) -> float:
         exposure_regex = r"[+-]?\d+(?:/\d+)?"
         matches = re.findall(exposure_regex, value)
+        if not matches:
+            logging.warning("Could not parse exposure compensation from '%s', defaulting to 0.0", value)
+            return 0.0
         return convert_to_float(matches[0])
 
     @staticmethod

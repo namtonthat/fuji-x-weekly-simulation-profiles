@@ -1,8 +1,8 @@
 import pytest
 from bs4 import BeautifulSoup
 
-from ..scrape.models import FujiSensor
-from ..scrape.scraper import (
+from scrape.models import FujiSensor, KeyStandardizer
+from scrape.scraper import (
     FujiRecipes,
     flatten_and_process_tags,
 )
@@ -137,7 +137,7 @@ def test_fuji_simulation_profile_parser_monkeypatch(monkeypatch):
     # Adjust the monkeypatch target according to your implementation.
     # If FujiSimulationProfileParser does not have a soup_representation method,
     # patch the module-level function instead.
-    from ..scrape import scraper  # Adjust the import to your module structure.
+    from scrape import scraper  # Adjust the import to your module structure.
 
     monkeypatch.setattr(scraper, "soup_representation", fake_soup_representation)
 
@@ -152,3 +152,21 @@ def test_fuji_simulation_profile_parser_monkeypatch(monkeypatch):
     assert len(recipes) == 2
     assert recipes[0].link.url == "https://fujixweekly.com/2024/07/15/sample-recipe/"
     assert recipes[1].link.url == "https://fujixweekly.com/2024/07/15/sample-recipe2/"
+
+
+# --- Tests for KeyStandardizer.exposure_compensation ---
+def test_exposure_compensation_no_match_returns_zero():
+    """
+    Test that exposure_compensation returns 0.0 when given a string
+    with no numeric exposure value.
+    """
+    result = KeyStandardizer.exposure_compensation("no exposure here")
+    assert result == 0.0
+
+
+def test_exposure_compensation_normal_value():
+    """
+    Test that exposure_compensation correctly parses a normal fractional value.
+    """
+    result = KeyStandardizer.exposure_compensation("+1/3")
+    assert result == 0.33  # convert_to_float rounds to 2 decimal places
