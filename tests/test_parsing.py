@@ -121,3 +121,67 @@ def test_exposure_compensation_normal_value():
     """
     result = KeyStandardizer.exposure_compensation("+1/3")
     assert result == 0.33  # convert_to_float rounds to 2 decimal places
+
+
+# --- Tests for resolve_conditional_value ---
+
+
+def test_resolve_conditional_value_xtrans_iv():
+    """
+    Test that a conditional value resolves correctly for X-Trans IV sensor.
+    """
+    value = "Off (X-Trans V); Weak (X-Trans IV)"
+    result = resolve_conditional_value(value, FujiSensor.X_TRANS_IV)
+    assert result == "Weak"
+
+
+def test_resolve_conditional_value_xtrans_v():
+    """
+    Test that a conditional value resolves correctly for X-Trans V sensor.
+    """
+    value = "Off (X-Trans V); Weak (X-Trans IV)"
+    result = resolve_conditional_value(value, FujiSensor.X_TRANS_V)
+    assert result == "Off"
+
+
+def test_resolve_conditional_value_non_conditional():
+    """
+    Test that a non-conditional value passes through unchanged.
+    """
+    value = "Strong"
+    result = resolve_conditional_value(value, FujiSensor.X_TRANS_V)
+    assert result == "Strong"
+
+
+def test_resolve_conditional_value_strong_off():
+    """
+    Test another conditional pattern: 'Strong (X-Trans V); Off (X-Trans IV)'.
+    """
+    value = "Strong (X-Trans V); Off (X-Trans IV)"
+    assert resolve_conditional_value(value, FujiSensor.X_TRANS_V) == "Strong"
+    assert resolve_conditional_value(value, FujiSensor.X_TRANS_IV) == "Off"
+
+
+def test_resolve_conditional_value_fallback():
+    """
+    Test that when no sensor matches, the first value is returned.
+    """
+    value = "Off (X-Trans V); Weak (X-Trans IV)"
+    result = resolve_conditional_value(value, FujiSensor.X_TRANS_III)
+    assert result == "Off"
+
+
+def test_conditional_value_integration_with_parser(strong_tags):
+    """
+    Test that FujiSimulationProfileParser resolves conditional values
+    when a sensor is provided.
+    """
+    parser_v = FujiSimulationProfileParser(tags=strong_tags, sensor=FujiSensor.X_TRANS_V)
+    profile_v = parser_v.profile_dict
+    # "Off (X-Trans V); Weak (X-Trans IV)" with X-Trans V -> "Off" -> standardised to "OFF"
+    assert profile_v.get("color_chrome_fx_blue") == "OFF"
+
+    parser_iv = FujiSimulationProfileParser(tags=strong_tags, sensor=FujiSensor.X_TRANS_IV)
+    profile_iv = parser_iv.profile_dict
+    # "Off (X-Trans V); Weak (X-Trans IV)" with X-Trans IV -> "Weak" -> standardised to "WEAK"
+    assert profile_iv.get("color_chrome_fx_blue") == "WEAK"
