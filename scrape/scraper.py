@@ -246,7 +246,7 @@ class FujiRecipe:
 
     @property
     def output_file_path(self) -> str:
-        return f"fuji_profiles/{self.sensor.value}/{self.link.name}.fp1"
+        return f"fuji_profiles/{self.sensor.value}/{self.link.name}.FP1"
 
     @property
     def jinja2_template(self) -> Template:

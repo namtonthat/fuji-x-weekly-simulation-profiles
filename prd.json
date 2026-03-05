@@ -1,0 +1,148 @@
+{
+  "project": "fuji-x-weekly-simulation-profiles",
+  "branchName": "ralph/fix-bugs-and-inconsistencies",
+  "description": "Fix all identified bugs, inconsistencies, and data quality issues across scraper code, tests, configuration, and generated FP1 profile files",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix XML mapping typo (magnetic_green -> magenta_green)",
+      "description": "As a developer, I want the monochromatic color magenta-green value to be correctly mapped to the FP1 XML template so that profiles with monochromatic color settings are generated correctly.",
+      "acceptanceCriteria": [
+        "In scrape/models.py, attribute_to_xml_mapping key 'monochromatic_color_magnetic_green' is changed to 'monochromatic_color_magenta_green'",
+        "uv run pytest passes",
+        "uv run mypy passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Line 136 in scrape/models.py. The dataclass field is 'magenta_green' (line 92) but the mapping says 'magnetic_green'. The flattened key from to_flat_dict() will be 'monochromatic_color_magenta_green', so the current mapping never matches."
+    },
+    {
+      "id": "US-002",
+      "title": "Fix template path case mismatch",
+      "description": "As a developer, I want the Jinja2 template path to match the actual filename on disk so that the scraper works on case-sensitive filesystems (Linux CI).",
+      "acceptanceCriteria": [
+        "In scrape/scraper.py, template_location is changed from 'templates/FP1.jinja2' to 'templates/fp1.jinja2'",
+        "uv run pytest passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Line 237 in scrape/scraper.py. The actual file on disk is templates/fp1.jinja2 (lowercase). This will fail on case-sensitive filesystems like Linux CI."
+    },
+    {
+      "id": "US-003",
+      "title": "Add error handling for exposure_compensation",
+      "description": "As a developer, I want the exposure_compensation parser to handle missing regex matches gracefully instead of raising an unhandled IndexError.",
+      "acceptanceCriteria": [
+        "In scrape/models.py, exposure_compensation() returns 0.0 and logs a warning when no regex match is found instead of raising IndexError",
+        "New pytest test in tests/test_parsing.py covers the no-match case (e.g. passing an empty string or string with no numbers)",
+        "uv run pytest passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Line 274 in scrape/models.py. Currently does 'return convert_to_float(matches[0])' which raises IndexError if no matches. Follow the same pattern as other parsers (e.g. numerical_value) which log a warning and return a default."
+    },
+    {
+      "id": "US-004",
+      "title": "Fix unconditional warning in create_fuji_profile",
+      "description": "As a developer, I want create_fuji_profile() to only log a warning when profile creation fails, not on every call.",
+      "acceptanceCriteria": [
+        "In scrape/scraper.py, the warning in create_fuji_profile() is conditional — only logged when profile creation fails (returns None or raises exception)",
+        "Successful profile creation does not produce a warning log",
+        "uv run pytest passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Lines 172-178 in scrape/scraper.py. Currently the logger.warning() is called unconditionally after every FujiSimulationProfile.create_instance() call. Wrap in try/except and only warn on failure, returning None. On success, return the profile without warning."
+    },
+    {
+      "id": "US-005",
+      "title": "Add early return on empty tags in get_profile",
+      "description": "As a developer, I want get_profile() to return None immediately when no tags are found instead of processing empty data.",
+      "acceptanceCriteria": [
+        "In scrape/scraper.py, get_profile() returns None after logging the error when tags is empty/falsy",
+        "uv run pytest passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Lines 219-220 in scrape/scraper.py. Currently logs an error when tags is empty but continues to create a FujiSimulationProfileParser with empty tags. Add 'return None' after the logger.error() call."
+    },
+    {
+      "id": "US-006",
+      "title": "Fix test imports and monkeypatch targets",
+      "description": "As a developer, I want the test files to use correct imports and monkeypatch targets so that tests actually run and validate the code.",
+      "acceptanceCriteria": [
+        "tests/test_parsing.py uses absolute imports: 'from scrape.models import FujiSensor' and 'from scrape.scraper import FujiRecipes, flatten_and_process_tags' (not relative 'from ..scrape')",
+        "tests/test_parsing.py line 142 monkeypatches FujiRecipes.soup_representation (the staticmethod on the class) instead of scraper.soup_representation (nonexistent module-level function)",
+        "tests/test_save.py line 52 monkeypatches the actual output path mechanism — either monkeypatch FujiRecipe.output_file_path as a property returning a tmp_path-based path, or monkeypatch os.getcwd to return tmp_path — instead of nonexistent 'scrape.models.OUTPUT_DIR'",
+        "Create tests/conftest.py with shared pytest fixtures (e.g. sample_html, strong_tags) that can be reused across test files",
+        "All tests pass with 'uv run pytest'",
+        "uv run mypy passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "test_parsing.py uses relative imports (from ..scrape.models) which won't work with pytest from project root. test_save.py tries to monkeypatch scrape.models.OUTPUT_DIR which doesn't exist. Move shared fixtures to tests/conftest.py for reuse."
+    },
+    {
+      "id": "US-007",
+      "title": "Fix pyproject.toml configuration",
+      "description": "As a developer, I want the project config to reflect the actual Python version and package structure.",
+      "acceptanceCriteria": [
+        "tool.ruff.target-version is updated from 'py311' to 'py313' in pyproject.toml",
+        "tool.coverage.run.source is updated from ['fuji_x_weekly_simulation_profiles'] to ['scrape'] in pyproject.toml",
+        "uv run ruff check . passes",
+        "uv run mypy passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Line 53: target-version = 'py311' but requires-python = '>=3.13.0'. Line 112: source references wrong module name."
+    },
+    {
+      "id": "US-008",
+      "title": "Fix method name typo and logging inconsistencies",
+      "description": "As a developer, I want consistent naming and logging across the codebase.",
+      "acceptanceCriteria": [
+        "scrape/models.py: method 'film_simluation' (line 277) renamed to 'film_simulation'",
+        "scrape/models.py: reference in initialise_parsing_methods (line 401) updated from KeyStandardizer.film_simluation to KeyStandardizer.film_simulation",
+        "scrape/models.py: add 'logger = logging.getLogger(__name__)' near top of file and replace all bare logging.warning() calls with logger.warning()",
+        "scrape/scraper.py: replace logging.warning() call on line 57 with logger.warning()",
+        "uv run ruff check . passes",
+        "uv run mypy passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "film_simluation is a typo (missing 'l'). Models.py has no configured logger — it uses logging.warning() directly in multiple places (lines 158, 265, 291, 365, 385). scraper.py mixes logger.warning() and logging.warning()."
+    },
+    {
+      "id": "US-009",
+      "title": "Fix ColorChromeBlue conditional parsing in scraper",
+      "description": "As a developer, I want the scraper to parse sensor-conditional values like 'Off (X-Trans V); Weak (X-Trans IV)' and select the correct value for the current sensor, instead of storing the raw text.",
+      "acceptanceCriteria": [
+        "Add a function in scrape/models.py or scrape/scraper.py that parses semicolon-separated conditional values like 'Off (X-Trans V); Weak (X-Trans IV)' and returns the value matching the given sensor (e.g. for X-Trans-IV returns 'WEAK', for X-Trans-V returns 'OFF')",
+        "The color_chrome_effect parsing in KeyStandardizer handles conditional values by accepting an optional sensor parameter or by pre-processing the value before standardization",
+        "New pytest fixture in tests/conftest.py provides sample conditional values for testing",
+        "New test verifies correct value is selected for X-Trans-IV sensor and X-Trans-V sensor",
+        "If no sensor match is found, falls back to the first value with a warning",
+        "uv run pytest passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Currently 3 FP1 files contain raw text like 'OFF_(X-TRANS_V);_WEAK_(X-TRANS_IV)' in ColorChromeBlue. The scraper needs to know which sensor it's generating for and pick the right value. The sensor is available in FujiRecipe.sensor. The conditional format from fujixweekly.com is typically 'Value1 (Sensor1); Value2 (Sensor2)'."
+    },
+    {
+      "id": "US-010",
+      "title": "Standardize FP1 extension and re-scrape all profiles",
+      "description": "As a developer, I want to regenerate all FP1 profiles after code fixes, using .FP1 (uppercase) extension to match Fujifilm convention.",
+      "acceptanceCriteria": [
+        "scrape/scraper.py output path in FujiRecipe.output_file_path uses '.FP1' extension instead of '.fp1'",
+        "cached/*.txt files are cleared (emptied) to force full re-scrape",
+        "make scrape runs successfully and generates profiles in fuji_profiles/",
+        "All generated files in fuji_profiles/ use .FP1 extension",
+        "No FP1 files contain raw conditional text like 'OFF_(X-TRANS_V);_WEAK_(X-TRANS_IV)'",
+        "uv run pytest passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "This story requires network access to fujixweekly.com. Run 'make clean' to clear cached URLs, then 'make scrape' to regenerate all profiles. Fujifilm X Raw Studio natively produces .FP1 (uppercase). The copy script already handles both cases via case-insensitive matching. Delete old .fp1/.FP1 files before re-scraping to avoid mixed extensions."
+    }
+  ]
+}
