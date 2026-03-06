@@ -105,10 +105,13 @@ class WhiteBalance:
 @dataclass
 class FujiSimulationProfile:
     film_simulation: str
-    white_balance: WhiteBalance
-    dynamic_range: DynamicRange
-    sharpness: int
-    high_iso_nr: int
+    # These were previously required but many blog posts omit them
+    white_balance: WhiteBalance = field(default_factory=lambda: WhiteBalance(
+        setting=WhiteBalanceSetting.AUTO, red=0, blue=0, color_temp="0K"
+    ))
+    dynamic_range: DynamicRange = field(default=DynamicRange.DRAUTO)
+    sharpness: int = 0
+    high_iso_nr: int = 0
 
     # Optional attributes
     clarity: int = 0
@@ -207,9 +210,9 @@ def resolve_conditional_value(value: str, sensor: FujiSensor) -> str:
     sensor_value_normalised = sensor.value.replace("-", " ").replace("  ", " ").lower()
 
     for val, sensor_text in matches:
-        sensor_text_normalised = sensor_text.replace("-", " ").replace("  ", " ").lower()
+        sensor_text_normalised = str(sensor_text).replace("-", " ").replace("  ", " ").lower()
         if sensor_text_normalised == sensor_value_normalised:
-            return val.strip()
+            return str(val).strip()
 
     # Fall back to the first value
     logger.warning(
@@ -217,11 +220,12 @@ def resolve_conditional_value(value: str, sensor: FujiSensor) -> str:
         value,
         sensor.value,
     )
-    return matches[0][0].strip()
+    return str(matches[0][0]).strip()
 
 
 def clean_camera_profile_name(camera_tag: str) -> str:
     camera_profile = camera_tag.replace(" ", "_").replace("+", "_").replace(".", "").split("/")[0].upper()
+    camera_profile = re.sub(r'_+', '_', camera_profile)
 
     alternative_camera_profile_names = {"CLASSIC_NEGATIVE": "CLASSIC_NEG"}
 

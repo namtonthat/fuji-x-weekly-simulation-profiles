@@ -168,7 +168,11 @@ class FujiSimulationProfileParser:
 
             KeyStandardizer.initialise_parsing_methods()
             clean_key = standardise_key_names(key)
-            clean_value = KeyStandardizer.parse_key_and_standardise_value(clean_key, value)
+            try:
+                clean_value = KeyStandardizer.parse_key_and_standardise_value(clean_key, value)
+            except (KeyError, ValueError, IndexError):
+                logger.warning("Failed to parse key '%s' with value '%s'", clean_key, value)
+                continue
             logger.debug("Parsing key '%s' with value '%s'", clean_key, clean_value)
             profile_dict[clean_key] = clean_value
 
@@ -217,8 +221,8 @@ class FujiRecipeLink:
         logger.info("Parsing URL: %s", self.url)
         page = requests.get(self.url, timeout=TIMEOUT_SECONDS)
         soup = BeautifulSoup(page.content, "html.parser")
-        strong_tags = soup.find_all("strong")
-        return strong_tags
+        tags = soup.find_all(["strong", "b"])
+        return tags
 
     def get_profile(self, sensor: FujiSensor | None = None) -> FujiSimulationProfile | None:
         try:

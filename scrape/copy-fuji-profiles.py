@@ -77,6 +77,7 @@ COMPATIBILITY_MAPPING = {
         "GFX50SII",
         "X100VI",
         "X-M5",
+        "X-E5",
     ],
 }
 

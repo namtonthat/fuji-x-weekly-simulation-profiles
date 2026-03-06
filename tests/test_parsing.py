@@ -185,3 +185,9 @@ def test_conditional_value_integration_with_parser(strong_tags):
     profile_iv = parser_iv.profile_dict
     # "Off (X-Trans V); Weak (X-Trans IV)" with X-Trans IV -> "Weak" -> standardised to "WEAK"
     assert profile_iv.get("color_chrome_fx_blue") == "WEAK"
+
+
+def test_clean_camera_profile_name_with_plus():
+    from scrape.models import clean_camera_profile_name
+    assert clean_camera_profile_name("Acros + R") == "ACROS_R"
+    assert clean_camera_profile_name("Monochrome + G") == "MONOCHROME_G"
