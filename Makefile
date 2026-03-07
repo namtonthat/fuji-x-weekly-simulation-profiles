@@ -13,7 +13,7 @@ check: ## Run code quality tools.
 	@./scripts/check.sh
 
 .PHONY: copy
-copy: ## Copy profiles to the required folders
+copy: ## Interactive copy (bulk compatible or selected profiles cross-sensor override)
 	@echo "📷 Copying fuji_profiles"
 	@uv run python -m scrape.copy-fuji-profiles
 

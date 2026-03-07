@@ -45,7 +45,7 @@ class FilmSimulation(Enum):
     PRO_NEG_HI = "NEGAhi"
     PRO_NEG_STD = "NEGAStd"
     PROVIA = "Provia"
-    REALA_ACE = "REALA_ACE"
+    REALA_ACE = "Reala"
     SEPIA = "Sepia"
     VELVIA = "Velvia"
 
@@ -106,9 +106,7 @@ class WhiteBalance:
 class FujiSimulationProfile:
     film_simulation: str
     # These were previously required but many blog posts omit them
-    white_balance: WhiteBalance = field(default_factory=lambda: WhiteBalance(
-        setting=WhiteBalanceSetting.AUTO, red=0, blue=0, color_temp="0K"
-    ))
+    white_balance: WhiteBalance = field(default_factory=lambda: WhiteBalance(setting=WhiteBalanceSetting.AUTO, red=0, blue=0, color_temp="0K"))
     dynamic_range: DynamicRange = field(default=DynamicRange.DRAUTO)
     sharpness: int = 0
     high_iso_nr: int = 0
@@ -225,7 +223,7 @@ def resolve_conditional_value(value: str, sensor: FujiSensor) -> str:
 
 def clean_camera_profile_name(camera_tag: str) -> str:
     camera_profile = camera_tag.replace(" ", "_").replace("+", "_").replace(".", "").split("/")[0].upper()
-    camera_profile = re.sub(r'_+', '_', camera_profile)
+    camera_profile = re.sub(r"_+", "_", camera_profile)
 
     alternative_camera_profile_names = {"CLASSIC_NEGATIVE": "CLASSIC_NEG"}
 
@@ -349,10 +347,10 @@ class KeyStandardizer:
             color_temp = get_color_temperature(value)
 
             # Extract the temperature or setting
-            if "K" in value:
-                setting = WhiteBalanceSetting.TEMPERATURE
-            elif "AWB" in value:
+            if "AWB" in value:
                 setting = WhiteBalanceSetting.AUTO
+            elif "K" in value:
+                setting = WhiteBalanceSetting.TEMPERATURE
             else:
                 fluorescent_match = re.search(r"FLUORESCENT_(\d)", value)
                 if fluorescent_match:

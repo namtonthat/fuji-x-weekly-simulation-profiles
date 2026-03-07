@@ -255,6 +255,111 @@ def select_folder(folder_dict: dict) -> str:
     return options[int_choice]
 
 
+def select_copy_mode() -> str:
+    options = {
+        "1": "Bulk copy compatible sensor profiles",
+        "2": "Copy selected profile(s) only (allow cross-sensor override)",
+    }
+    console.print("Please select copy mode:", style="bold yellow")
+    for key, option in options.items():
+        console.print(f"{key}: {option}", style="yellow")
+    return Prompt.ask("Select mode by number", choices=list(options.keys()))
+
+
+def list_fp1_files(directory: str) -> list[str]:
+    return sorted([f for f in os.listdir(directory) if f.lower().endswith(FUJI_EXTENSION)])
+
+
+def get_camera_model_sensors(camera_model: str) -> list[FujiSensor]:
+    return [sensor for sensor, camera_models in COMPATIBILITY_MAPPING.items() if camera_model in camera_models]
+
+
+def resolve_destination_sensor(
+    destination_path: str,
+    fuji_profiles_root: str,
+) -> FujiSensor:
+    camera_model = extract_camera_model(destination_path)
+    candidate_sensors = get_camera_model_sensors(camera_model)
+    if not candidate_sensors:
+        raise UnknownSensorError()
+    if len(candidate_sensors) == 1:
+        return candidate_sensors[0]
+
+    destination_profile_names = set(list_fp1_files(destination_path))
+    best_sensor = candidate_sensors[0]
+    best_overlap = -1
+    for sensor in candidate_sensors:
+        sensor_profile_dir = os.path.join(fuji_profiles_root, sensor.value)
+        if not os.path.isdir(sensor_profile_dir):
+            continue
+        sensor_profiles = set(list_fp1_files(sensor_profile_dir))
+        overlap = len(destination_profile_names.intersection(sensor_profiles))
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_sensor = sensor
+
+    return best_sensor
+
+
+def build_cross_sensor_candidates(
+    destination_path: str,
+    fuji_profiles_root: str,
+    selected_profile_folder: str,
+) -> list[tuple[str, str, str]]:
+    destination_sensor = resolve_destination_sensor(destination_path, fuji_profiles_root)
+    destination_sensor_dir = os.path.join(fuji_profiles_root, destination_sensor.value)
+    sensor_recipes = set(list_fp1_files(destination_sensor_dir)) if os.path.isdir(destination_sensor_dir) else set()
+
+    selected_profile_root_folder = selected_profile_folder.split(os.sep)[0]
+    excluded_folders = {destination_sensor.value, selected_profile_folder, selected_profile_root_folder}
+
+    candidates: list[tuple[str, str, str]] = []
+    for folder_name in sorted(os.listdir(fuji_profiles_root)):
+        folder_path = os.path.join(fuji_profiles_root, folder_name)
+        if not os.path.isdir(folder_path) or folder_name in excluded_folders:
+            continue
+
+        for file_name in list_fp1_files(folder_path):
+            if file_name in sensor_recipes:
+                continue
+            display_name = f"{folder_name}/{file_name}"
+            source_file_path = os.path.join(folder_path, file_name)
+            candidates.append((display_name, source_file_path, file_name))
+
+    return candidates
+
+
+def select_fp1_file_set(directory: str, allowed_options: list[str] | None = None) -> list[str]:
+    options = allowed_options if allowed_options is not None else list_fp1_files(directory)
+    if not options:
+        raise NoValidFileError(FUJI_EXTENSION)
+
+    console.print("Select one or more profiles to copy as a set:", style="bold yellow")
+    for i, option in enumerate(options):
+        console.print(f"{i + 1}: {option}", style="yellow")
+    console.print("Enter comma-separated numbers (example: 1,3,8)", style="dim")
+
+    raw_selection = Prompt.ask("Select files by number")
+    selected_indexes = []
+    for token in raw_selection.split(","):
+        stripped = token.strip()
+        if not stripped.isdigit():
+            raise InvalidSelectionError()
+        selected_indexes.append(int(stripped) - 1)
+
+    if not selected_indexes:
+        raise InvalidSelectionError()
+
+    selected_file_names = []
+    for index in selected_indexes:
+        if index < 0 or index >= len(options):
+            raise InvalidSelectionError()
+        selected_file_names.append(options[index])
+
+    # Preserve selection order while removing duplicates
+    return list(dict.fromkeys(selected_file_names))
+
+
 def extract_camera_model(destination_path: str) -> str:
     path_parts = destination_path.strip(os.sep).split(os.sep)
 
@@ -301,8 +406,15 @@ def is_compatiable_sensor(selected_sensor: str, destination_path: str) -> bool:
     if camera_model not in compatiable_camera_models:
         raise IncompatibleSensorError()
 
-    console.print("[green]✓ Sensor '{}' is compatible with '{}'[/green]", selected_sensor_enum.name, camera_model)
+    console.print(f"[green]✓ Sensor '{selected_sensor_enum.name}' is compatible with '{camera_model}'[/green]")
     return True
+
+
+def is_sensor_compatible_for_destination(selected_sensor: str, destination_path: str) -> bool:
+    try:
+        return is_compatiable_sensor(selected_sensor, destination_path)
+    except (InvalidDestinationPathError, CameraModelExtractionError, UnknownSensorError, IncompatibleSensorError):
+        return False
 
 
 def find_valid_fp1_file(directory: str) -> FP1File | None:
@@ -337,12 +449,14 @@ if __name__ == "__main__":
     destination_folders = list_folders_with_subfolders(BASE_PATH)
     selected_destination_folder = select_folder(destination_folders)
     destination_path = os.path.join(BASE_PATH, selected_destination_folder)
+    copy_mode = select_copy_mode()
 
-    try:
-        is_compatiable_sensor(selected_profile_folder, destination_path)
-    except (InvalidDestinationPathError, CameraModelExtractionError, UnknownSensorError, IncompatibleSensorError) as e:
-        console.print("[bold red]ERROR:[/bold red] {}", str(e))
-        sys.exit(1)
+    if copy_mode == "1":
+        try:
+            is_compatiable_sensor(selected_profile_folder, destination_path)
+        except (InvalidDestinationPathError, CameraModelExtractionError, UnknownSensorError, IncompatibleSensorError) as e:
+            console.print("[bold red]ERROR:[/bold red] {}", str(e))
+            sys.exit(1)
 
     valid_fp1_file = find_valid_fp1_file(destination_path)
     if not valid_fp1_file:
@@ -356,9 +470,33 @@ if __name__ == "__main__":
     if not os.path.exists(destination_path):
         os.makedirs(destination_path)
 
-    fuji_template_files = FP1TemplateFiles(source_directory=fuji_profiles_path, destination_directory=destination_path)
-    for fp1_file in fuji_template_files.template_files:
-        fp1_file.apply_tags(tags_to_apply)
-        fp1_file.save()
+    console.print("[bold yellow]NOTE:[/bold yellow] Result may not be an exact copy. " "X RAW STUDIO metadata and unsupported camera features can override or normalize values.")
+
+    if copy_mode == "1":
+        fuji_template_files = FP1TemplateFiles(source_directory=fuji_profiles_path, destination_directory=destination_path)
+        for fp1_file in fuji_template_files.template_files:
+            fp1_file.apply_tags(tags_to_apply)
+            fp1_file.save()
+    elif copy_mode == "2":
+        available_candidates = build_cross_sensor_candidates(
+            destination_path=destination_path,
+            fuji_profiles_root=fuji_profiles_dir,
+            selected_profile_folder=selected_profile_folder,
+        )
+        if not available_candidates:
+            console.print("[bold red]No cross-sensor missing profiles available to copy from other folders.[/bold red]")
+            sys.exit(1)
+
+        candidate_lookup = {display_name: (source_file_path, file_name) for display_name, source_file_path, file_name in available_candidates}
+        selected_display_names = select_fp1_file_set(
+            fuji_profiles_path,
+            allowed_options=[display_name for display_name, _, _ in available_candidates],
+        )
+        for selected_display_name in selected_display_names:
+            source_file_path, file_name = candidate_lookup[selected_display_name]
+            destination_file_path = os.path.join(destination_path, file_name)
+            selected_fp1_file = FP1File(source_file_path=source_file_path, destination_file_path=destination_file_path)
+            selected_fp1_file.apply_tags(tags_to_apply)
+            selected_fp1_file.save()
 
     logging.info("Files copied successfully.")

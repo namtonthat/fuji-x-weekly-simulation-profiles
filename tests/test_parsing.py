@@ -189,5 +189,16 @@ def test_conditional_value_integration_with_parser(strong_tags):
 
 def test_clean_camera_profile_name_with_plus():
     from scrape.models import clean_camera_profile_name
+
     assert clean_camera_profile_name("Acros + R") == "ACROS_R"
     assert clean_camera_profile_name("Monochrome + G") == "MONOCHROME_G"
+
+
+def test_reala_ace_maps_to_reala():
+    assert KeyStandardizer.film_simulation("Reala Ace") == "Reala"
+
+
+def test_awb_keeps_kelvin_when_present():
+    wb = KeyStandardizer.white_balance("AWB_0_RED_0_BLUE_10000K")
+    assert wb.setting.value == "Auto"
+    assert wb.color_temp == "10000K"
