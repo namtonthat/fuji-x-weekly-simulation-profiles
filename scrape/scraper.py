@@ -194,7 +194,7 @@ class FujiRecipeLink:
     name: str
     url: str
 
-    recipe_url_pattern: str = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*recipe/$"
+    recipe_url_pattern: str = r"https?://fujixweekly\.com/\d{4}/\d{2}/\d{2}/.*recipe.*/$"
 
     def __post_init__(self) -> None:
         self.name = self.clean_name(self.name)
