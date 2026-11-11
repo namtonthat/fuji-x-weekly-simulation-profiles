@@ -23,7 +23,7 @@ ensure_uv() {
 # Set up the Python virtual environment.
 setup_env() {
   echo "🚀 Creating virtual environment using uv"
-  uv venv --python "$PYTHON_VERSION"
+  uv venv --allow-existing --python "$PYTHON_VERSION"
   source .venv/bin/activate
 
   if [ -n "$GROUP_NAME" ]; then
