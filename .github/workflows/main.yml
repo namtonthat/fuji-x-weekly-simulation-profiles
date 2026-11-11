@@ -14,9 +14,9 @@ jobs:
       PYTHON_VERSION: 3.13.0
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -37,7 +37,7 @@ jobs:
           - "3.13"
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set up the environment
         uses: ./.github/actions/setup-uv-env
@@ -49,13 +49,13 @@ jobs:
       #   run: tox
 
       - name: Upload coverage reports to Codecov using Python ${{ matrix.env }}
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
 
   check-docs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set up the environment
         uses: ./.github/actions/setup-uv-env
